@@ -22,5 +22,5 @@ identifiers:
     value: "10.5281/zenodo.23690523"
     description: "DOI de todas as versões no Zenodo (aponta sempre para a mais recente)"
   - type: doi
-    value: "10.5281/zenodo.23701511"
-    description: "DOI da versão 1.1.0"
+    value: "10.5281/zenodo.23703832"
+    description: "DOI da versão 1.1.1"
