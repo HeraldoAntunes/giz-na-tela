@@ -3,13 +3,18 @@
 // MCP chegam todos por aqui: a barra executa (ela guarda o estado dos botões) e a ajuda lê esta lista para mostrar
 // os atalhos. Comando novo entra primeiro aqui; o teste confere que cada um tem quem o execute e um teste próprio.
 (() => {
-const FERRAMENTAS = ['caneta', 'marca', 'borracha', 'reta', 'seta', 'retangulo', 'elipse', 'texto', 'numero', 'visto',
+const FERRAMENTAS = ['caneta', 'marca', 'borracha', 'mover', 'reta', 'seta', 'cota', 'medir', 'retangulo', 'elipse', 'texto', 'numero', 'visto',
   'xis', 'holofote', 'lupa'];
-const NOME_FERRAMENTA = { caneta: 'Caneta', marca: 'Marca-texto', borracha: 'Borracha', reta: 'Reta', seta: 'Seta',
+const NOME_FERRAMENTA = { caneta: 'Caneta', marca: 'Marca-texto', borracha: 'Borracha', mover: 'Mover (mão)', reta: 'Reta', seta: 'Seta', cota: 'Cota', medir: 'Medir',
   retangulo: 'Retângulo', elipse: 'Elipse', texto: 'Texto', numero: 'Numeração', visto: 'Visto', xis: 'X',
   holofote: 'Holofote', lupa: 'Lupa' };
-const CORES = [['#e53935', 'Vermelho'], ['#1e6fd9', 'Azul'], ['#2e9d4a', 'Verde'], ['#f9c80e', 'Amarelo'],
+// cores de fábrica da barra, na ordem das bolinhas (o verde é a principal); o professor pode trocar cada uma
+const CORES = [['#2e9d4a', 'Verde'], ['#e53935', 'Vermelho'], ['#1e6fd9', 'Azul'], ['#f9c80e', 'Amarelo'],
   ['#111111', 'Preto'], ['#ffffff', 'Branco']];
+const POSICAO = { tipo: 'numero', min: 1, max: CORES.length, inteiro: true, descricao: 'bolinha da barra (1 a 6)' };
+// aparência da cota (setas ou tracinhos de arquitetura); medida digitada e medida automática são do jeito de desenhar
+const COTAS = ['setas', 'tracos'];
+const TIPOS_DE_COTA = ['setas', 'medida', 'auto', 'tracos'];
 const ESPESSURAS = { fina: 2, media: 4, grossa: 8 };
 
 // tipos de parâmetro: a mesma validação vale para o clique, o atalho e o pedido de fora (que não é confiável)
@@ -23,12 +28,22 @@ const LIGADO = descricao => ({ tipo: 'logico', opcional: true, descricao: descri
 // volta_a_escrever: pelo botão ou atalho, sai do "Mouse livre" (escolher algo de desenho é querer desenhar)
 const COMANDOS = [
   { nome: 'ferramenta.escolher', nivel: 'agir', volta_a_escrever: true, aviso: p => `escolheu ${NOME_FERRAMENTA[p.ferramenta]}`,
-    descricao: 'Escolhe a ferramenta: caneta, marca (marca-texto), borracha, reta, seta, retangulo, elipse, texto, ' +
+    descricao: 'Escolhe a ferramenta: caneta, marca (marca-texto), borracha, mover (a mão: arrasta um objeto), reta, seta, cota ' +
+      '(barras nas pontas; ao soltar, digita-se a medida), medir (cota que mede sozinha), retangulo, elipse, texto, ' +
       'numero, visto, xis, holofote (escurece em volta do ponteiro) ou lupa.',
     parametros: { ferramenta: { tipo: 'texto', valores: FERRAMENTAS } } },
   { nome: 'cor.escolher', nivel: 'agir', volta_a_escrever: true, aviso: () => 'mudou a cor',
     descricao: 'Escolhe a cor da tinta (#rrggbb). Com a borracha escolhida, volta para a caneta.',
     parametros: { cor: { tipo: 'cor' } } },
+  { nome: 'cor.posicao', nivel: 'agir', volta_a_escrever: true, aviso: p => `escolheu a cor ${p.posicao}`,
+    descricao: 'Escolhe a cor de uma das bolinhas da barra (1 a 6), com a cor que ela tiver agora.',
+    parametros: { posicao: POSICAO } },
+  { nome: 'cor.trocar', nivel: 'agir', volta_a_escrever: true, aviso: p => `trocou a cor ${p.posicao}`,
+    descricao: 'Troca a cor de uma bolinha da barra e já a escolhe. Pelo botão (segundo toque na bolinha escolhida), ' +
+      'abre o seletor de cores do Windows; de fora, mande a cor (#rrggbb).',
+    parametros: { posicao: POSICAO, cor: { tipo: 'cor', opcional: true } } },
+  { nome: 'cores.restaurar', nivel: 'agir', aviso: () => 'voltou às cores de fábrica',
+    descricao: 'Volta as bolinhas da barra às cores de fábrica (verde, vermelho, azul, amarelo, preto e branco).' },
   { nome: 'espessura.escolher', nivel: 'agir', volta_a_escrever: true, aviso: p => `escolheu o traço ${p.espessura}`,
     descricao: 'Escolhe a espessura do traço: fina, media ou grossa (também muda o tamanho do texto e dos carimbos).',
     parametros: { espessura: { tipo: 'texto', valores: Object.keys(ESPESSURAS) } } },
@@ -40,6 +55,24 @@ const COMANDOS = [
     descricao: 'Cobre a tela com um quadro liso: branco, negro, ou tela (volta a mostrar os programas). Sem ' +
       'parâmetro, passa para o próximo (tela, branco, negro).',
     parametros: { quadro: { tipo: 'texto', valores: ['tela', 'branco', 'negro'], opcional: true } } },
+  { nome: 'seta.estilo', nivel: 'agir', volta_a_escrever: true, aviso: () => 'mudou o tipo de seta',
+    descricao: 'Tipo das setas novas: ponta aberta (em V, a de fábrica) ou cheia (triângulo), simples ou dupla (ponta ' +
+      'nos dois lados). Sem parâmetro, passa para o próximo: simples aberta, simples cheia, dupla aberta, dupla cheia. ' +
+      'Pelo botão, é cada toque a mais na seta já escolhida (ou S de novo).',
+    parametros: { estilo: { tipo: 'texto', valores: ['aberta', 'cheia'], opcional: true },
+      dupla: { tipo: 'logico', opcional: true } } },
+  { nome: 'cota.estilo', nivel: 'agir', volta_a_escrever: true, aviso: p => `cota: ${p.estilo || 'próximo tipo'}`,
+    descricao: 'Aparência das cotas novas (da Cota e do Medir): setas (barras nas pontas e setas até elas) ou tracos ' +
+      '(tracinhos inclinados, como em arquitetura). Sem parâmetro, alterna. Pelo botão, é o segundo toque na cota já ' +
+      'escolhida (ou K de novo).',
+    parametros: { estilo: { tipo: 'texto', valores: COTAS, opcional: true } } },
+  { nome: 'cota.escala', nivel: 'agir', aviso: p => (p.valor ? `régua: ${p.valor} ${p.unidade}` : 'tirou a régua'),
+    descricao: 'Régua da cota automática: pixels px medem valor na unidade (ex.: valor 10, unidade cm, pixels 245). ' +
+      'Sem parâmetros, tira a régua (a cota automática volta a medir em px). Pelo uso normal, a régua se define ' +
+      'sozinha quando o professor digita uma medida com unidade (ex.: 10 cm) numa cota com medida.',
+    parametros: { valor: { tipo: 'numero', min: 0.000001, max: 1e9, opcional: true },
+      unidade: { tipo: 'texto', valores: ['mm', 'cm', 'm', 'km'], opcional: true },
+      pixels: { tipo: 'numero', min: 1, max: 20000, opcional: true } } },
   { nome: 'forma.preencher', nivel: 'agir', volta_a_escrever: true, aviso: p => `preenchimento: ${p.modo || 'próximo'}`,
     descricao: 'Preenchimento do retângulo e da elipse: nada (só contorno), translucido (destaca) ou cheio (tapa o ' +
       'que está embaixo). Sem parâmetro, passa para o próximo.',
@@ -81,14 +114,23 @@ const COMANDOS = [
     descricao: 'Carimba um visto (✓) ou um X (marca: visto ou xis) com o centro em x, y.',
     parametros: { marca: { tipo: 'texto', valores: ['visto', 'xis'] }, x: X, y: Y, cor: COR } },
   { nome: 'forma.desenhar', nivel: 'agir', desfaz: true, aviso: () => 'desenhou uma forma',
-    descricao: 'Desenha reta, seta, retangulo ou elipse de (x1, y1) até (x2, y2). A seta aponta para (x2, y2).',
-    parametros: { forma: { tipo: 'texto', valores: ['reta', 'seta', 'retangulo', 'elipse'] },
+    descricao: 'Desenha reta, seta, cota, retangulo ou elipse de (x1, y1) até (x2, y2). A seta aponta para (x2, y2). ' +
+      'Na cota, medida é o texto no meio da linha (ex.: 2,5 m).',
+    parametros: { forma: { tipo: 'texto', valores: ['reta', 'seta', 'cota', 'retangulo', 'elipse'] },
       x1: X, y1: Y, x2: X, y2: Y, cor: COR, espessura: ESP,
-      preencher: { tipo: 'texto', valores: ['nada', 'translucido', 'cheio'], opcional: true } } },
+      preencher: { tipo: 'texto', valores: ['nada', 'translucido', 'cheio'], opcional: true },
+      ponta: { tipo: 'texto', valores: ['aberta', 'cheia'], opcional: true, descricao: 'só para seta (vazio: a da barra)' },
+      dupla: { tipo: 'logico', opcional: true, descricao: 'só para seta: ponta nos dois lados (vazio: a da barra)' },
+      cota: { tipo: 'texto', valores: TIPOS_DE_COTA, opcional: true, descricao: 'só para cota (vazio: a da barra); auto mede sozinha' },
+      medida: { tipo: 'texto', min: 1, max: 40, opcional: true, descricao: 'só para cota: texto no meio da linha' } } },
   { nome: 'traco.desenhar', nivel: 'agir', desfaz: true, aviso: () => 'desenhou um traço',
     descricao: 'Desenha um traço livre pelos pontos [x, y] ou [x, y, pressão de 0 a 1]. marca: true faz marca-texto.',
     parametros: { pontos: { tipo: 'pontos', min: 2, max: 5000 }, cor: COR, espessura: ESP,
       marca: { tipo: 'logico', opcional: true } } },
+  { nome: 'objeto.mover', nivel: 'agir', desfaz: true, aviso: () => 'moveu um objeto',
+    descricao: 'Move o objeto que estiver no ponto (x, y) (o de cima, se houver vários) dx px para a direita e dy px ' +
+      'para baixo. É o que a mão faz ao arrastar.',
+    parametros: { x: X, y: Y, dx: { tipo: 'numero', min: -20000, max: 20000 }, dy: { tipo: 'numero', min: -20000, max: 20000 } } },
   { nome: 'desenho.adicionar', nivel: 'agir', desfaz: true, aviso: p => `desenhou ${p.itens.length} ${p.itens.length === 1 ? 'item' : 'itens'}`,
     descricao: 'Desenha vários itens de uma vez, num passo só do Desfazer. Cada item tem `tipo` (texto, numero, ' +
       'correcao, forma ou traco) e os campos do comando de um item (texto.escrever, numero.carimbar, ' +
@@ -112,14 +154,14 @@ const COMANDOS = [
 const ATALHOS = {
   c: ['ferramenta.escolher', { ferramenta: 'caneta' }], m: ['ferramenta.escolher', { ferramenta: 'marca' }],
   b: ['ferramenta.escolher', { ferramenta: 'borracha' }], l: ['ferramenta.escolher', { ferramenta: 'reta' }],
-  s: ['ferramenta.escolher', { ferramenta: 'seta' }], r: ['ferramenta.escolher', { ferramenta: 'retangulo' }],
+  s: ['ferramenta.escolher', { ferramenta: 'seta' }], k: ['ferramenta.escolher', { ferramenta: 'cota' }],
+  j: ['ferramenta.escolher', { ferramenta: 'medir' }], ' ': ['ferramenta.escolher', { ferramenta: 'mover' }], r: ['ferramenta.escolher', { ferramenta: 'retangulo' }],
   e: ['ferramenta.escolher', { ferramenta: 'elipse' }], t: ['ferramenta.escolher', { ferramenta: 'texto' }],
   n: ['ferramenta.escolher', { ferramenta: 'numero' }], v: ['ferramenta.escolher', { ferramenta: 'visto' }],
   x: ['ferramenta.escolher', { ferramenta: 'xis' }], h: ['ferramenta.escolher', { ferramenta: 'holofote' }],
   u: ['ferramenta.escolher', { ferramenta: 'lupa' }],
-  1: ['cor.escolher', { cor: CORES[0][0] }], 2: ['cor.escolher', { cor: CORES[1][0] }],
-  3: ['cor.escolher', { cor: CORES[2][0] }], 4: ['cor.escolher', { cor: CORES[3][0] }],
-  5: ['cor.escolher', { cor: CORES[4][0] }], 6: ['cor.escolher', { cor: CORES[5][0] }],
+  1: ['cor.posicao', { posicao: 1 }], 2: ['cor.posicao', { posicao: 2 }], 3: ['cor.posicao', { posicao: 3 }],
+  4: ['cor.posicao', { posicao: 4 }], 5: ['cor.posicao', { posicao: 5 }], 6: ['cor.posicao', { posicao: 6 }],
   7: ['espessura.escolher', { espessura: 'fina' }], 8: ['espessura.escolher', { espessura: 'media' }],
   9: ['espessura.escolher', { espessura: 'grossa' }],
   a: ['tela.ampliar', {}], '+': ['tela.ampliar', { modo: 'mais' }], '=': ['tela.ampliar', { modo: 'mais' }],
@@ -130,6 +172,8 @@ const ATALHOS = {
   'ctrl+g': ['captura.mandar_ao_giz', {}],
 };
 const ATALHO_GLOBAL = { tecla: 'Ctrl+Alt+F', comando: 'tela.fixar' };
+// tocar de novo (ou a mesma tecla) numa ferramenta já escolhida troca uma opção dela, sem botão a mais na barra
+const DE_NOVO = { seta: ['seta.estilo', {}], cota: ['cota.estilo', {}] };
 
 const POR_NOME = Object.fromEntries(COMANDOS.map(c => [c.nome, c]));
 const ITEM_COMANDO = { texto: 'texto.escrever', numero: 'numero.carimbar', correcao: 'correcao.carimbar',
@@ -196,5 +240,5 @@ function descrever(c) {
     parametros: Object.fromEntries(Object.entries(c.parametros || {}).map(([k, d]) => [k, { ...d }])) };
 }
 
-window.GizTela = { COMANDOS, POR_NOME, ATALHOS, ATALHO_GLOBAL, CORES, ESPESSURAS, FERRAMENTAS, NOME_FERRAMENTA, validar, descrever };
+window.GizTela = { COTAS, COMANDOS, POR_NOME, ATALHOS, ATALHO_GLOBAL, DE_NOVO, CORES, ESPESSURAS, FERRAMENTAS, NOME_FERRAMENTA, validar, descrever };
 })();

@@ -13,6 +13,26 @@ extern "system" {
     fn RegGetValueW(chave: isize, sub: *const u16, valor: *const u16, flags: u32, tipo: *mut u32, dados: *mut u16,
         tam: *mut u32) -> i32;
 }
+#[link(name = "comdlg32")]
+extern "system" {
+    fn ChooseColorW(c: *mut EscolhaDeCor) -> i32;
+}
+#[repr(C)]
+struct EscolhaDeCor { tam: u32, dona: isize, inst: isize, cor: u32, personalizadas: *mut u32, flags: u32, dados: isize,
+    gancho: isize, modelo: *const u16 }
+
+// seletor de cores do Windows (já em português); devolve #rrggbb ou nada se o professor cancelar
+pub fn escolher_cor(dona: isize, atual: &str) -> Option<String> {
+    let h = u32::from_str_radix(atual.trim_start_matches('#'), 16).unwrap_or(0x2e9d4a);
+    let (r, g, b) = ((h >> 16) & 255, (h >> 8) & 255, h & 255);
+    let mut personalizadas = [0x00ffffffu32; 16];
+    let mut c = EscolhaDeCor { tam: std::mem::size_of::<EscolhaDeCor>() as u32, dona, inst: 0, cor: (b << 16) | (g << 8) | r,
+        personalizadas: personalizadas.as_mut_ptr(), flags: 0x1 | 0x2, dados: 0, gancho: 0, modelo: std::ptr::null() };  // CC_RGBINIT | CC_FULLOPEN
+    if unsafe { ChooseColorW(&mut c) } == 0 { return None; }
+    let v = c.cor;
+    Some(format!("#{:02x}{:02x}{:02x}", v & 255, (v >> 8) & 255, (v >> 16) & 255))
+}
+
 #[link(name = "shell32")]
 extern "system" {
     fn ShellExecuteW(hwnd: isize, op: *const u16, arq: *const u16, par: *const u16, pasta: *const u16, mostrar: i32) -> isize;

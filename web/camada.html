@@ -13,6 +13,7 @@
   #escrita { position: absolute; min-width: 40px; padding: 0 2px; outline: 1.5px dashed rgba(30,111,217,.8);
              outline-offset: 3px; white-space: pre; font-family: "Segoe UI", sans-serif; font-weight: 600;
              line-height: 1.2; background: rgba(255,255,255,.01); caret-color: currentColor; }
+  #escrita.medida:empty::before { content: 'medida (ou Enter)'; opacity: .45; font-weight: 400; }
   #fundo { position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; display: none; }
   #lupa { position: fixed; width: 240px; height: 240px; border-radius: 50%; pointer-events: none; display: none;
           box-shadow: 0 0 0 3px #fff, 0 0 0 4px #333, 0 8px 22px rgba(0,0,0,.45); background: #fff; }
@@ -31,7 +32,7 @@
 // Desenho com pressão por PointerEvents. A camada só desenha: quem decide é a barra (registro de comandos), que chama
 // as funções de window.camada pelo host e recebe de volta o estado daqui.
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
-const S = { cor: '#e53935', largura: 4, ferramenta: 'caneta', borracha: false, tracos: [], atual: null,
+const S = { escala: null, cor: '#2e9d4a', largura: 4, ferramenta: 'caneta', borracha: false, tracos: [], atual: null, seta: 'aberta', setaDupla: false, cota: 'setas',
             passado: [], futuro: [], some: false, preencher: 'nada', raioLuz: 160, aumento: 2.5 };
 // desfazer e refazer guardam a lista inteira antes de cada mudança (os itens nunca mudam depois de prontos)
 function guardar() { S.passado.push(S.tracos); if (S.passado.length > 300) S.passado.shift(); S.futuro = []; }
@@ -136,12 +137,12 @@ function desenharTraco(t) {
   ctx.globalCompositeOperation = 'source-over';
 }
 // formas: arrastar da ponta inicial até a final; Shift prende a reta em 15 graus e a caixa em quadrado
-const FORMAS = new Set(['reta', 'seta', 'retangulo', 'elipse']);
+const FORMAS = new Set(['reta', 'seta', 'cota', 'medir', 'retangulo', 'elipse']);
 function pontaFinal(a, e, forma) {
   const { x, y } = W(e);
   if (!e.shiftKey) return { x, y };
   const dx = x - a.x, dy = y - a.y;
-  if (forma === 'reta' || forma === 'seta') {
+  if (forma === 'reta' || forma === 'seta' || forma === 'cota' || forma === 'medir') {
     const ang = Math.round(Math.atan2(dy, dx) / (Math.PI / 12)) * (Math.PI / 12), r = Math.hypot(dx, dy);
     return { x: a.x + r * Math.cos(ang), y: a.y + r * Math.sin(ang) };
   }
@@ -161,19 +162,92 @@ function desenharForma(t) {
       ctx.fill(); ctx.globalAlpha = g;
     }
   }
-  else {
-    const ang = Math.atan2(b.y - a.y, b.x - a.x), cab = Math.max(12, t.largura * 3.5);
-    // a haste para antes da ponta, para a ponta da seta não ficar arredondada pelo traço grosso
-    const fim = t.forma === 'seta' ? { x: b.x - Math.cos(ang) * cab * 0.8, y: b.y - Math.sin(ang) * cab * 0.8 } : b;
-    ctx.moveTo(a.x, a.y); ctx.lineTo(fim.x, fim.y);
-    if (t.forma === 'seta') {
-      ctx.stroke(); ctx.beginPath(); ctx.moveTo(b.x, b.y);
-      ctx.lineTo(b.x - cab * Math.cos(ang - 0.45), b.y - cab * Math.sin(ang - 0.45));
-      ctx.lineTo(b.x - cab * Math.cos(ang + 0.45), b.y - cab * Math.sin(ang + 0.45));
-      ctx.closePath(); ctx.fill(); ctx.restore(); return;
-    }
-  }
+  else if (t.forma === 'seta') { desenharSeta(t); ctx.restore(); return; }
+  else if (t.forma === 'cota') { desenharCota(t); ctx.restore(); return; }
+  else { ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); }
   ctx.stroke(); ctx.restore();
+}
+// seta: haste um quarto mais fina que o traço escolhido e ponta grande o bastante para ler de longe.
+// Aberta (em V, a de fábrica) ou cheia (triângulo). Seta antiga, sem `ponta`, era cheia.
+// ponta em `p`, apontando no ângulo `ang`; devolve quanto a haste precisa recuar para não aparecer na ponta cheia
+function ponta(p, ang, cab, cheia) {
+  const abre = cheia ? 0.4 : 0.48;
+  ctx.beginPath();
+  ctx.moveTo(p.x - cab * Math.cos(ang - abre), p.y - cab * Math.sin(ang - abre));
+  ctx.lineTo(p.x, p.y);
+  ctx.lineTo(p.x - cab * Math.cos(ang + abre), p.y - cab * Math.sin(ang + abre));
+  if (cheia) { ctx.closePath(); ctx.fill(); } else ctx.stroke();
+  return cheia ? cab * 0.7 : 0;
+}
+function linhaRecuada(a, b, recA, recB) {
+  const ang = Math.atan2(b.y - a.y, b.x - a.x);
+  ctx.beginPath();
+  ctx.moveTo(a.x + Math.cos(ang) * recA, a.y + Math.sin(ang) * recA);
+  ctx.lineTo(b.x - Math.cos(ang) * recB, b.y - Math.sin(ang) * recB);
+  ctx.stroke();
+}
+function desenharSeta(t) {
+  const { a, b } = t, ang = Math.atan2(b.y - a.y, b.x - a.x), w = Math.max(1.5, t.largura * 0.75);
+  const cheia = (t.ponta || 'cheia') === 'cheia', cab = Math.max(16, w * (cheia ? 4.5 : 5));
+  ctx.lineWidth = w;
+  const recB = ponta(b, ang, cab, cheia), recA = t.dupla ? ponta(a, ang + Math.PI, cab, cheia) : 0;
+  linhaRecuada(a, b, recA, recB);
+}
+// cota: linha fina com barras perpendiculares nas pontas; setas (cheias, pequenas) até as barras, ou tracinhos
+// inclinados (arquitetura); a medida, se houver, entra no meio da linha, sempre de pé para ler
+const tamMedida = t => Math.max(18, Math.round(tamTexto(t.largura) * 0.75));
+// cota automática: sem régua mede em px da tela; com régua, na unidade dela. A régua se define sozinha quando o
+// professor digita uma medida com unidade (ex.: 10 cm) numa cota com medida desenhada sobre algo de tamanho conhecido
+const numero = v => v.toLocaleString('pt-BR', { maximumFractionDigits: v >= 100 ? 0 : v >= 10 ? 1 : 2 });
+function medirCota(t) {
+  const px = Math.hypot(t.b.x - t.a.x, t.b.y - t.a.y);
+  return S.escala ? `${numero(px * S.escala.valor / S.escala.px)} ${S.escala.unidade}` : `${Math.round(px)} px`;
+}
+function definirRegua(t, texto) {
+  const m = /^(\d+(?:[.,]\d+)?)\s*(mm|cm|m|km)$/i.exec(texto), px = Math.hypot(t.b.x - t.a.x, t.b.y - t.a.y);
+  if (!m || px < 4) return;
+  S.escala = { valor: Number(m[1].replace(',', '.')), unidade: m[2].toLowerCase(), px };
+  if (!(S.escala.valor > 0)) { S.escala = null; return; }
+  camada.aviso(`Régua definida: ${texto} = ${Math.round(px)} px. A cota automática passa a medir em ${S.escala.unidade}.`);
+}
+function desenharCota(t) {
+  const { a, b } = t, ang = Math.atan2(b.y - a.y, b.x - a.x), w = Math.max(1.5, t.largura * 0.6);
+  const nx = -Math.sin(ang), ny = Math.cos(ang), barra = Math.max(12, w * 7), cab = Math.max(12, w * 5);
+  ctx.lineWidth = w;
+  for (const p of [a, b]) {
+    ctx.beginPath(); ctx.moveTo(p.x - nx * barra, p.y - ny * barra); ctx.lineTo(p.x + nx * barra, p.y + ny * barra); ctx.stroke();
+  }
+  let recA = 0, recB = 0;
+  if (t.cota === 'tracos') {
+    const d = cab * 0.75, inclina = ang - Math.PI / 4;
+    ctx.save(); ctx.lineWidth = w * 1.8;
+    for (const p of [a, b]) {
+      ctx.beginPath(); ctx.moveTo(p.x - Math.cos(inclina) * d, p.y - Math.sin(inclina) * d);
+      ctx.lineTo(p.x + Math.cos(inclina) * d, p.y + Math.sin(inclina) * d); ctx.stroke();
+    }
+    ctx.restore();
+    recA = recB = -barra * 0.8;   // em arquitetura a linha passa um pouco das barras
+  } else {
+    recB = ponta(b, ang, cab, true); recA = ponta(a, ang + Math.PI, cab, true);
+  }
+  // enquanto se arrasta a cota automática, a medida acompanha a ponta
+  const medida = t.medida || (t.cota === 'auto' ? medirCota(t) : '');
+  if (!medida) { linhaRecuada(a, b, recA, recB); return; }
+  const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, tam = tamMedida(t), comp = Math.hypot(b.x - a.x, b.y - a.y);
+  ctx.save();
+  ctx.font = `600 ${tam}px "Segoe UI", sans-serif`;
+  const meio = ctx.measureText(medida).width / 2 + tam * 0.35;
+  const cabe = meio * 2 < comp - Math.max(0, recA) - Math.max(0, recB) - 8;
+  if (cabe) { linhaRecuada(a, m, recA, meio); linhaRecuada(m, b, meio, recB); }   // a linha se abre para o texto
+  else linhaRecuada(a, b, recA, recB);   // não cabe: o texto vai ao lado da linha
+  // o texto fica de pé para ler; na vertical, de baixo para cima, como no desenho técnico
+  const de_pe = ang > Math.PI / 2 - 1e-6 || ang < -Math.PI / 2 ? ang + Math.PI : ang;
+  const sobe = cabe ? 0 : -tam * 0.85;
+  ctx.translate(m.x, m.y); ctx.rotate(de_pe);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  ctx.lineWidth = Math.max(2, tam / 9); ctx.strokeStyle = claro(t.cor) ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.8)';
+  ctx.strokeText(medida, 0, sobe); ctx.fillText(medida, 0, sobe);
+  ctx.restore();
 }
 // o ponteiro do mouse e da caneta: caneta na cor escolhida (ponta embaixo à esquerda), marca-texto e borracha
 function cursorSvg(svg, x, y) { return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${x} ${y}, crosshair`; }
@@ -184,6 +258,7 @@ function atualizarCursor() {
   else if (f === 'ampliar') cur = 'zoom-in';
   else if (f === 'lupa') cur = 'none';
   else if (f === 'holofote') cur = 'crosshair';
+  else if (f === 'mover') cur = movendo ? 'grabbing' : 'grab';
   else if (f === 'visto' || f === 'xis') {
     const d = f === 'visto' ? 'M4 14l6 7L24 6' : 'M6 6l16 16M22 6L6 22';
     cur = cursorSvg(`<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28"><path d="${d}" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${c}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`, 14, 14);
@@ -231,7 +306,8 @@ async function congelar(sim, sozinho = false) {
 function estado() {
   return { congelado: congelado.style.display === 'block', ampliado: V.z > 1 || S.ferramenta === 'ampliar',
     tracos: S.tracos.length, desfazer: S.passado.length > 0, refazer: S.futuro.length > 0,
-    largura: innerWidth, altura: innerHeight };
+    largura: innerWidth, altura: innerHeight, escala: S.escala,
+    ultimaMedida: [...S.tracos].reverse().find(t => t.forma === 'cota' && t.medida)?.medida ?? null };
 }
 function avisarBarra() { window.ponte?.estadoCamada(estado()); }
 // lupa: círculo que acompanha o ponteiro e mostra, aumentado, o retrato congelado com a tinta por cima
@@ -296,9 +372,12 @@ cv.addEventListener('pointerdown', e => {
     redesenhar(); return;
   }
   cv.setPointerCapture(e.pointerId);
+  if (S.ferramenta === 'mover' && e.button !== 5) { pegar(w); return; }
   if (FORMAS.has(S.ferramenta) && e.button !== 5) {
-    const a = w;
-    S.atual = { forma: S.ferramenta, cor: S.cor, largura: S.largura, a, b: a, preencher: S.preencher };
+    const a = w, medir = S.ferramenta === 'medir';
+    // Medir é uma cota que mede sozinha; Cota abre a caixa da medida ao soltar (digitar é opcional)
+    S.atual = { forma: medir ? 'cota' : S.ferramenta, cor: S.cor, largura: S.largura, a, b: a, preencher: S.preencher,
+      ponta: S.seta, dupla: S.setaDupla, cota: medir ? 'auto' : S.cota, digitar: S.ferramenta === 'cota' };
     return;
   }
   S.atual = { cor: S.cor, largura: S.largura, marca: S.ferramenta === 'marca', borracha: S.ferramenta === 'borracha' || e.button === 5, pts: [{ ...w, p: e.pressure }] };
@@ -307,16 +386,24 @@ cv.addEventListener('pointermove', e => {
   const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
   if (S.ferramenta === 'holofote') { moverLuz(e.clientX, e.clientY); return; }
   if (S.ferramenta === 'lupa') { moverLupa(e.clientX, e.clientY); return; }
+  if (movendo) { arrastar(W(e)); return; }
   if (!S.atual) return;
   if (S.atual.forma) { S.atual.b = pontaFinal(S.atual.a, e, S.atual.forma); pedirQuadro(); return; }
   for (const c of evs) S.atual.pts.push({ ...W(c), p: c.pressure });
   pedirQuadro();
 });
 function fimTraco() {
+  if (movendo) { soltar(); return; }
   const t = S.atual;
   S.atual = null;
   // forma de um toque só (sem arrastar) não fica na tela
-  if (t && !(t.forma && Math.hypot(t.b.x - t.a.x, t.b.y - t.a.y) < 4)) { delete t.feitos; acrescentar(t); }
+  if (t && !(t.forma && Math.hypot(t.b.x - t.a.x, t.b.y - t.a.y) < 4)) {
+    const digitar = t.digitar;
+    delete t.feitos; delete t.digitar;
+    if (t.forma === 'cota' && t.cota === 'auto') t.medida = medirCota(t);   // a medida fica a do momento do desenho
+    acrescentar(t);
+    if (digitar) abrirMedida(t);   // a medida é digitada logo depois de soltar (Enter vazio ou Esc: sem medida)
+  }
   redesenhar();
 }
 cv.addEventListener('pointerup', fimTraco); cv.addEventListener('pointercancel', fimTraco);
@@ -339,9 +426,95 @@ function abrirEscrita(x, y) {
 }
 function terminarEscrita(desistir = false) {
   if (!escrita) return;
-  const { el, x, y, tam, cor } = escrita, texto = el.innerText.replace(/\n$/, '');
+  const { el, x, y, tam, cor, cota } = escrita, texto = el.innerText.replace(/\n$/, '');
   escrita = null; el.remove();
+  if (cota) {   // a medida entra na própria cota (mesmo passo do Desfazer); sem texto, a cota fica só com as setas
+    if (!desistir && texto.trim()) {
+      S.tracos = S.tracos.map(t => (t === cota ? { ...t, medida: texto.trim().slice(0, 40) } : t));
+      definirRegua(cota, texto.trim());
+    }
+    redesenhar(); avisarBarra(); return;
+  }
   if (!desistir && texto.trim()) { acrescentar({ texto, x: x + 2, y, tam, cor }); redesenhar(); }
+}
+// ---- a mão: pega o objeto de cima no ponto tocado e arrasta; cada arrasto é um passo do Desfazer ----
+let movendo = null;
+const dist = (p, a, b) => {   // distância do ponto p ao segmento ab
+  const dx = b.x - a.x, dy = b.y - a.y, l = dx * dx + dy * dy, k = l ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l)) : 0;
+  return Math.hypot(p.x - a.x - k * dx, p.y - a.y - k * dy);
+};
+function acerta(t, p) {
+  const folga = 8 + (t.largura || 4);
+  if (t.borracha || (t.ate && t.ate < performance.now())) return false;
+  if (t.pts) return t.pts.some((q, i) => dist(p, i ? t.pts[i - 1] : q, q) <= folga + (t.marca ? t.largura * 2 : 0));
+  if (t.n) return Math.hypot(p.x - t.x, p.y - t.y) <= t.raio + 4;
+  if (t.correcao) return Math.abs(p.x - t.x) <= t.tam * 0.6 && Math.abs(p.y - t.y) <= t.tam * 0.6;
+  if (t.texto !== undefined) {
+    ctx.save(); ctx.font = `600 ${t.tam}px "Segoe UI", sans-serif`;
+    const linhas = t.texto.split('\n'), larg = Math.max(...linhas.map(l => ctx.measureText(l).width));
+    ctx.restore();
+    return p.x >= t.x - 6 && p.x <= t.x + larg + 6 && p.y >= t.y - 6 && p.y <= t.y + linhas.length * t.tam * 1.2 + 6;
+  }
+  if (!t.forma) return false;
+  const { a, b } = t;
+  if (t.forma === 'retangulo') {
+    const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x), y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
+    if (t.preencher && t.preencher !== 'nada' && p.x >= x0 && p.x <= x1 && p.y >= y0 && p.y <= y1) return true;
+    const c = [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+    return c.some((q, i) => dist(p, q, c[(i + 1) % 4]) <= folga);
+  }
+  if (t.forma === 'elipse') {
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2, rx = Math.max(1, Math.abs(b.x - a.x) / 2), ry = Math.max(1, Math.abs(b.y - a.y) / 2);
+    const r = Math.hypot((p.x - cx) / rx, (p.y - cy) / ry);
+    return (t.preencher && t.preencher !== 'nada' && r <= 1) || Math.abs(r - 1) * Math.min(rx, ry) <= folga;
+  }
+  return dist(p, a, b) <= folga + (t.forma === 'cota' ? 10 : 4);   // reta, seta e cota: perto da linha
+}
+function deslocar(t, dx, dy) {
+  const m = q => ({ ...q, x: q.x + dx, y: q.y + dy });
+  if (t.pts) return { ...t, pts: t.pts.map(m) };
+  if (t.forma) return { ...t, a: m(t.a), b: m(t.b) };
+  return { ...t, x: t.x + dx, y: t.y + dy };
+}
+const deCima = p => { for (let i = S.tracos.length - 1; i >= 0; i--) if (acerta(S.tracos[i], p)) return i; return -1; };
+function pegar(p) {
+  const i = deCima(p);
+  if (i < 0) return;
+  guardar();
+  movendo = { i, original: S.tracos[i], de: p, mexeu: false };
+  atualizarCursor();
+}
+function arrastar(p) {
+  const dx = p.x - movendo.de.x, dy = p.y - movendo.de.y;
+  if (!movendo.mexeu && Math.hypot(dx, dy) < 2) return;
+  movendo.mexeu = true;
+  S.tracos = S.tracos.map((t, j) => (j === movendo.i ? deslocar(movendo.original, dx, dy) : t));
+  pedirQuadroMover();
+}
+let quadroMover = false;
+function pedirQuadroMover() {
+  if (quadroMover) return;
+  quadroMover = true;
+  requestAnimationFrame(() => { quadroMover = false; redesenhar(); });
+}
+function soltar() {
+  if (!movendo.mexeu) S.passado.pop();   // só um toque, sem arrastar: não vira passo do Desfazer
+  movendo = null; redesenhar(); atualizarCursor(); avisarBarra();
+}
+// caixa da medida, centrada no meio da cota; Enter termina, Esc deixa a cota sem medida
+function abrirMedida(t) {
+  const tam = tamMedida(t), el = document.createElement('div');
+  el.id = 'escrita'; el.className = 'medida'; el.contentEditable = 'plaintext-only';
+  Object.assign(el.style, { left: (t.a.x + t.b.x) / 2 + 'px', top: (t.a.y + t.b.y) / 2 + 'px', fontSize: tam + 'px',
+    color: t.cor, transform: 'translate(-50%, -50%)', background: 'rgba(255,255,255,.85)' });
+  palco.append(el);
+  escrita = { el, cota: t };
+  el.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'Enter') { e.preventDefault(); terminarEscrita(); }
+    if (e.key === 'Escape') { e.preventDefault(); terminarEscrita(true); }
+  });
+  setTimeout(() => el.focus(), 0);
 }
 // chamadas da barra (pelo host): cada uma devolve o estado daqui, para a barra acender os botões certos
 const ESPESSURA = { fina: 2, media: 4, grossa: 8 };
@@ -353,6 +526,8 @@ function itemDeFora(it, numero) {
     case 'numero': return { n: it.numero ?? numero, x: it.x, y: it.y, raio: raioNumero(larg), cor };
     case 'correcao': return { correcao: it.marca, x: it.x, y: it.y, tam: tamMarca(larg), cor };
     case 'forma': return { forma: it.forma, cor, largura: larg, a: { x: it.x1, y: it.y1 }, b: { x: it.x2, y: it.y2 },
+      ponta: it.ponta || S.seta, dupla: it.dupla ?? S.setaDupla, cota: it.cota || (it.medida ? 'medida' : S.cota),
+      ...(it.medida ? { medida: it.medida } : {}),
       preencher: it.preencher || S.preencher };
     case 'traco': return { cor, largura: larg, marca: !!it.marca, borracha: false,
       pts: it.pontos.map(([x, y, p]) => ({ x, y, p })) };
@@ -419,6 +594,18 @@ window.camada = {
     return estado();
   },
   some(sim) { S.some = !!sim; return estado(); },
+  seta(v) { S.seta = v?.ponta === 'cheia' ? 'cheia' : 'aberta'; S.setaDupla = !!v?.dupla; return estado(); },
+  cota(e) { S.cota = e === 'tracos' ? 'tracos' : 'setas'; return estado(); },
+  // objeto.mover (agente ou teste): o mesmo que a mão faz, num passo só
+  mover({ x, y, dx, dy }) {
+    terminarEscrita();
+    const i = deCima({ x, y });
+    if (i < 0) throw new Error('não há objeto nesse ponto');
+    guardar();
+    S.tracos = S.tracos.map((t, j) => (j === i ? deslocar(t, dx, dy) : t));
+    redesenhar(); return estado();
+  },
+  escala(v) { S.escala = v && v.valor > 0 && v.px > 0 ? { valor: v.valor, unidade: v.unidade, px: v.px } : null; redesenhar(); return estado(); },
   preencher(p) { S.preencher = ['translucido', 'cheio'].includes(p) ? p : 'nada'; return estado(); },
   escrevendo(sim) { document.body.classList.toggle('escrevendo', sim); return estado(); },
   // vários itens de uma vez entram como um passo só do Desfazer (é assim que o pedido de um agente se desfaz)
@@ -428,6 +615,7 @@ window.camada = {
     const novos = lista.map(it => {
       const t = itemDeFora(it, numero);
       if (t.n) numero = Math.max(numero, t.n + 1);
+      if (t.forma === 'cota' && t.cota === 'auto' && !t.medida) t.medida = medirCota(t);
       return t;
     });
     if (novos.length) {

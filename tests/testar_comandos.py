@@ -204,6 +204,95 @@ def t_preencher(a):
     confere(seq == ["translucido", "cheio", "nada"], f"forma.preencher dá a volta ({seq})")
 
 
+def t_seta(a):
+    confere(a.estado()["ponta_da_seta"] == "aberta", "seta.estilo: ponta aberta de fábrica")
+    confere(a.valor("seta.estilo")["ponta_da_seta"] == "cheia", "seta.estilo sem parâmetro alterna")
+    confere(a.valor("seta.estilo", estilo="aberta")["ponta_da_seta"] == "aberta", "seta.estilo aberta")
+    confere(a.cmd("seta.estilo", estilo="dupla")[0] == 400, "seta.estilo recusa estilo inexistente")
+    tipos = []
+    for _ in range(4):
+        e = a.valor("seta.estilo")
+        tipos.append((e["ponta_da_seta"], e["seta_dupla"]))
+    confere(tipos == [("cheia", False), ("aberta", True), ("cheia", True), ("aberta", False)],
+            f"seta.estilo passa pelos 4 tipos na ordem ({tipos})")
+    a.valor("desenho.limpar")
+    a.valor("forma.desenhar", forma="seta", x1=300, y1=500, x2=600, y2=500, cor="#111111", espessura="grossa")
+    a.valor("forma.desenhar", forma="seta", x1=300, y1=600, x2=600, y2=600, cor="#111111", espessura="grossa", ponta="cheia")
+    p = a.retrato("setas")
+    k = p[0] / a.estado()["tela"]["largura"]
+    # 24 px antes da ponta, a 6 px da linha: a ponta cheia é triângulo pintado; a aberta é só o contorno em V
+    confere(not perto(pixel(p, 576 * k, 606 * k), (255, 255, 255), 60), "ponta cheia pinta o meio do triângulo")
+    confere(perto(pixel(p, 576 * k, 506 * k), (255, 255, 255), 60), "ponta aberta deixa o meio do V vazio")
+    a.valor("desenho.limpar")
+
+
+def t_cota(a):
+    seq = [a.valor("cota.estilo")["tipo_de_cota"] for _ in range(2)]
+    confere(seq == ["tracos", "setas"], f"cota.estilo alterna setas e tracinhos ({seq})")
+    confere(a.cmd("cota.estilo", estilo="dupla")[0] == 400, "cota.estilo recusa tipo inexistente")
+    a.valor("desenho.limpar")
+    a.valor("forma.desenhar", forma="cota", x1=300, y1=700, x2=800, y2=700, cor="#1e6fd9", espessura="grossa",
+            medida="2,5 m")
+    a.valor("forma.desenhar", forma="cota", x1=300, y1=850, x2=800, y2=850, cor="#1e6fd9", cota="tracos")
+    p = a.retrato("cotas")
+    k = p[0] / a.estado()["tela"]["largura"]
+    azul = lambda x, y: not perto(pixel(p, x * k, y * k), (255, 255, 255), 60)
+    confere(azul(300, 690) and azul(800, 712), "cota: barras perpendiculares nas duas pontas")
+    confere(any(azul(x, y) for x in range(530, 571, 3) for y in (694, 700, 706)),
+            "cota com medida: o texto no meio da linha")
+    confere(a.estado()["desenhos"] == 2, "forma.desenhar cota (com medida e de arquitetura)")
+    confere(a.cmd("forma.desenhar", forma="cota", x1=1, y1=1, x2=9, y2=9, medida="")[0] == 400,
+            "cota recusa medida em branco")
+    a.valor("desenho.limpar")
+
+
+def t_cores(a):
+    a.valor("cores.restaurar")
+    confere(a.valor("cor.posicao", posicao=1)["cor"] == "#2e9d4a", "cor.posicao 1 é o verde de fábrica")
+    confere(a.valor("cor.posicao", posicao=2)["cor"] == "#e53935", "cor.posicao 2 é o vermelho")
+    e = a.valor("cor.trocar", posicao=3, cor="#7B1FA2")
+    confere(e["cores"][2] == "#7b1fa2" and e["cor"] == "#7b1fa2", "cor.trocar troca a bolinha e já a escolhe")
+    s_, r = a.cmd("cor.trocar", posicao=3)
+    confere(s_ == 400 and "mande a cor" in r["erro"], "cor.trocar de fora sem cor é recusado (não abre seletor)")
+    confere(a.cmd("cor.posicao", posicao=7)[0] == 400, "cor.posicao recusa bolinha inexistente")
+    e = a.valor("cores.restaurar")
+    confere(e["cores"][2] == "#1e6fd9" and e["cor"] == "#2e9d4a", "cores.restaurar volta às de fábrica")
+
+
+def t_escala(a):
+    a.valor("desenho.limpar")
+    a.valor("cota.escala")
+    confere(a.estado()["regua"] is None, "cota.escala sem parâmetros tira a régua")
+    a.valor("forma.desenhar", forma="cota", cota="auto", x1=300, y1=400, x2=550, y2=400)
+    confere(a.estado()["ultima_medida"] == "250 px", f"cota automática sem régua mede em px ({a.estado()['ultima_medida']})")
+    a.valor("cota.escala", valor=10, unidade="cm", pixels=200)
+    a.valor("forma.desenhar", forma="cota", cota="auto", x1=300, y1=500, x2=600, y2=900)
+    confere(a.estado()["ultima_medida"] == "25 cm", f"cota automática com régua mede em cm ({a.estado()['ultima_medida']})")
+    a.valor("forma.desenhar", forma="cota", cota="auto", x1=300, y1=600, x2=313, y2=600)
+    confere(a.estado()["ultima_medida"] == "0,65 cm", f"medida pequena com vírgula ({a.estado()['ultima_medida']})")
+    a.retrato("cota-auto")
+    a.valor("cota.escala")
+    a.valor("desenho.limpar")
+
+
+def t_mover(a):
+    a.valor("desenho.limpar")
+    a.valor("forma.desenhar", forma="retangulo", x1=300, y1=300, x2=400, y2=380, cor="#1e6fd9", preencher="cheio")
+    a.valor("texto.escrever", texto="mover", x=600, y=300, tamanho=40)
+    confere(a.cmd("objeto.mover", x=900, y=700, dx=10, dy=10)[0] == 400, "objeto.mover num ponto vazio é recusado")
+    a.valor("objeto.mover", x=350, y=340, dx=300, dy=200)   # pega o retângulo pelo meio (cheio) e leva
+    p = a.retrato("mover")
+    k = p[0] / a.estado()["tela"]["largura"]
+    confere(perto(pixel(p, 650 * k, 540 * k), (0x1e, 0x6f, 0xd9)) and perto(pixel(p, 350 * k, 340 * k), (255, 255, 255)),
+            "objeto.mover leva o retângulo para o lugar novo")
+    a.valor("objeto.mover", x=620, y=320, dx=0, dy=150)   # o texto
+    confere(a.estado()["desenhos"] == 2, "mover não cria nem apaga objetos")
+    a.valor("desenho.desfazer"); a.valor("desenho.desfazer")
+    p = a.retrato()
+    confere(perto(pixel(p, 350 * k, 340 * k), (0x1e, 0x6f, 0xd9)), "Ctrl+Z devolve o objeto ao lugar, um passo por movimento")
+    a.valor("desenho.limpar")
+
+
 def t_some(a):
     a.valor("tinta.some", ligado=True)
     n = a.estado()["desenhos"]
@@ -379,6 +468,11 @@ def t_ajuda(a):
 
 
 def t_fechar(a):
+    # escolhas que têm de voltar na próxima abertura (conferidas mais adiante, ao abrir de novo)
+    a.valor("seta.estilo", estilo="cheia", dupla=True)
+    a.valor("cota.estilo", estilo="tracos")
+    a.valor("cor.trocar", posicao=2, cor="#123456")
+    a.valor("espessura.escolher", espessura="grossa")
     a.valor("texto.escrever", texto="não fecha", x=100, y=100)
     s, r = a.cmd("programa.fechar")
     confere(s == 400 and "confirmar" in r["erro"] and a.proc.poll() is None, "programa.fechar com desenho pede confirmar")
@@ -496,13 +590,15 @@ def main():
         a = Anotador(exe, dados, capturas, "agir", porta_giz)
         try:
             lista = a.valor("comandos.listar")
+            confere(a.estado()["cor"] == "#2e9d4a", "abre com o verde como cor de início")
             # a barra pode abrir depois da camada: mesmo assim já sabe o tamanho da tela
             confere(a.estado()["tela"]["largura"] > 0, "tamanho da tela conhecido logo ao abrir")
             a.valor("quadro.alternar", quadro="branco")   # fundo liso: o retrato não pega o que está aberto no PC
             testes = {
                 "ferramenta.escolher": t_ferramenta, "cor.escolher": t_cor, "espessura.escolher": t_espessura,
                 "desenho.desfazer": t_desfazer_refazer, "desenho.refazer": t_desfazer_refazer, "desenho.limpar": t_limpar,
-                "quadro.alternar": t_quadro, "forma.preencher": t_preencher, "tinta.some": t_some,
+                "quadro.alternar": t_quadro, "forma.preencher": t_preencher, "seta.estilo": t_seta, "cota.estilo": t_cota, "cor.posicao": t_cores, "cor.trocar": t_cores, "cores.restaurar": t_cores,
+                "cota.escala": t_escala, "objeto.mover": t_mover, "tinta.some": t_some,
                 "tela.congelar": t_congelar, "tela.ampliar": t_ampliar, "tela.fixar": t_fixar,
                 "barra.recolher": t_recolher, "captura.salvar": lambda a: t_salvar(a, capturas),
                 "captura.mandar_ao_giz": lambda a: t_giz(a, giz_info), "captura.ler": t_ler,
@@ -543,6 +639,10 @@ def main():
         a4 = Anotador(exe, dados, capturas, "agir", porta_giz, {"barra": [120, 140], "recolhida": True})
         try:
             e = a4.estado()
+            confere((e["ponta_da_seta"], e["seta_dupla"], e["tipo_de_cota"], e["espessura"], e["cores"][1], e["cor"])
+                    == ("cheia", True, "tracos", "grossa", "#123456", "#123456"),
+                    f"abre com as escolhas da última vez ({e['ponta_da_seta']}, {e['seta_dupla']}, {e['tipo_de_cota']}, "
+                    f"{e['espessura']}, {e['cores'][1]}, {e['cor']})")
             h, r = posicao_da_barra()
             confere(e["barra_recolhida"] and e["modo"] == "mouse livre", "abre recolhida como foi deixada")
             confere(r[2] - r[0] < 100 and r[0] > 120, f"recolhida: botão pequeno à direita da posição da barra ({r})")

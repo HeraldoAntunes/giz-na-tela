@@ -2,6 +2,24 @@
 
 Numeração: só correções muda o terceiro número (1.0.0 → 1.0.1); recurso novo muda o segundo (1.0.x → 1.1.0).
 
+## [1.1.0] - 2026-10-27
+
+- **Setas mais nítidas:** a ponta vem aberta, em V, grande o bastante para ler de longe, e a haste ficou um quarto
+  mais fina que o traço escolhido.
+- **Seta dupla:** cada toque a mais no botão da seta (ou S de novo) passa pelos tipos: simples com ponta aberta,
+  simples com ponta cheia, dupla com ponta aberta e dupla com ponta cheia. O ícone do botão mostra o tipo.
+- **Cota** (botão novo, tecla K): arraste de uma ponta à outra do que quer medir; ao soltar, digite a medida (ou só
+  Enter para deixar sem), que entra no meio da linha, sempre de pé para ler. O segundo toque troca as setas pelos
+  tracinhos de arquitetura.
+- **Medir** (botão da régua, tecla J): arraste e a medida aparece sozinha, em pixels da tela. Uma Cota com a medida
+  digitada com unidade (ex.: 10 cm) sobre algo de tamanho conhecido vira a régua, e o Medir passa a dar cm.
+- **Mover** (a mão, tecla Espaço): toque num traço, forma, texto ou carimbo e arraste; o Ctrl+Z devolve ao lugar.
+- **Verde como cor de início**, na primeira bolinha (tecla 1). Tocar de novo na bolinha escolhida troca aquela cor pelo
+  seletor de cores do Windows; a ajuda tem "Voltar às cores de fábrica".
+- **Bandeira do Brasil** ao lado do nome, no topo da ajuda (Sobre).
+- **O programa lembra as escolhas:** cor, espessura, tipos de seta e de cota, preenchimento e as cores das bolinhas
+  voltam como estavam ao abrir de novo.
+
 ## [1.0.1] - 2026-10-27
 
 Versão pequena, sem mudança no uso.

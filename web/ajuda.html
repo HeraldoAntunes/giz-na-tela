@@ -11,6 +11,8 @@
   header { display: flex; gap: 14px; align-items: center; padding: 16px 20px 12px; border-bottom: 1px solid var(--borda); }
   header b { font-size: 20px; display: block; line-height: 1.2; }
   header span { color: var(--suave); font-size: 13px; }
+  /* bandeira ao lado do nome: tamanho e cores originais, nada por cima (Lei 5.700) */
+  .bandeira { vertical-align: -2px; }
   nav { display: flex; gap: 4px; padding: 8px 16px 0; border-bottom: 1px solid var(--borda); flex-wrap: wrap; }
   nav button { border: 0; background: none; font: 600 13px "Segoe UI", sans-serif; color: var(--suave); padding: 8px 12px;
                border-bottom: 3px solid transparent; cursor: pointer; }
@@ -47,7 +49,7 @@
     <rect x="11" y="14" width="42" height="28" rx="3" fill="none" stroke="#fff" stroke-width="3.4"/>
     <path d="M18 33c5-7 9-8 13-4s7 1 10-5" fill="none" stroke="#f6f2e7" stroke-width="3.6" stroke-linecap="round"/>
     <path d="M24 51h16M32 42v9" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/></svg>
-  <div><b>Giz na Tela</b><span id="versao">versão</span><br>
+  <div><b>Giz na Tela <img class="bandeira" src="bandeira-brasil.svg" alt="Brasil" title="Feito no Brasil" width="20" height="14"></b><span id="versao">versão</span><br>
     <span>Escrever por cima de qualquer programa com a mesa digitalizadora, o mouse ou a tela de toque.</span></div>
 </header>
 <nav>
@@ -76,6 +78,21 @@
   <p>Caneta (com a pressão da mesa), marca-texto, borracha, reta, seta, retângulo e elipse (com <kbd>Shift</kbd>, reta de
     15 em 15 graus e quadrado ou círculo), texto, numeração (1, 2, 3...), visto e X para corrigir, holofote (escurece em
     volta do ponteiro) e lupa. A roda do mouse muda o tamanho do holofote e o aumento da lupa.</p>
+  <p><b>Seta:</b> cada toque a mais no botão da seta (ou <kbd>S</kbd> de novo) passa para o próximo tipo: simples com
+    ponta aberta (a de fábrica), simples com ponta cheia, dupla com ponta aberta e dupla com ponta cheia. O ícone do
+    botão mostra o tipo que está valendo.</p>
+  <p><b>Cota</b> (<kbd>K</kbd>): arraste de uma ponta à outra do que quer medir; ao soltar, digite a medida (por
+    exemplo 2,5 m) e aperte Enter, ou só Enter para deixar sem. Toque de novo no botão para trocar as setas pelos
+    tracinhos de arquitetura.</p>
+  <p><b>Medir</b> (<kbd>J</kbd>, o botão da régua): arraste e a medida aparece sozinha, em pixels da tela. Para medir em
+    cm ou mm, faça antes uma <b>Cota</b> sobre algo de tamanho conhecido (uma régua no slide, a escala de um mapa) e
+    digite a medida com a unidade, por exemplo <kbd>10 cm</kbd>: ela vira a régua, e o Medir passa a dar cm.</p>
+  <p><b>Mover</b> (<kbd>Espaço</kbd>, a mão): toque num traço, forma, texto ou carimbo e arraste. <kbd>Ctrl</kbd>+<kbd>Z</kbd>
+    devolve ao lugar.</p>
+  <h2>Cores</h2>
+  <p>A cor de início é o verde. Toque de novo na bolinha de cor já escolhida para trocar aquela cor pelo seletor de
+    cores do Windows. O Giz na Tela lembra as cores, a espessura e os tipos de seta e de cota da última vez.</p>
+  <p><button class="btn" id="coresDeFabrica">Voltar às cores de fábrica</button></p>
   <p><b>Quadro</b> cobre a tela com fundo branco ou negro. <b>Congelar</b> deixa a tela parada (um vídeo, uma animação)
     enquanto você explica. <b>Ampliar</b> aumenta um ponto da tela para escrever em cima. <b>Preenchimento</b> muda o
     retângulo e a elipse (só contorno, translúcido ou cheio, que tapa a resposta). <b>Tinta que some</b> apaga sozinha
@@ -160,10 +177,10 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // a tabela de atalhos sai do registro de comandos: a ajuda nunca fica diferente do que as teclas fazem
 const { ATALHOS, POR_NOME, NOME_FERRAMENTA, CORES } = window.GizTela;
-const nomeTecla = k => k.split('+').map(p => `<kbd>${esc({ escape: 'Esc', f1: 'F1', ctrl: 'Ctrl' }[p] || p.toUpperCase())}</kbd>`).join('+');
+const nomeTecla = k => k === ' ' ? '<kbd>Espaço</kbd>' : k.split('+').map(p => `<kbd>${esc({ escape: 'Esc', f1: 'F1', ctrl: 'Ctrl' }[p] || p.toUpperCase())}</kbd>`).join('+');
 function oQueFaz(nome, a) {
   if (nome === 'ferramenta.escolher') return NOME_FERRAMENTA[a.ferramenta];
-  if (nome === 'cor.escolher') return 'Cor: ' + CORES.find(c => c[0] === a.cor)[1].toLowerCase();
+  if (nome === 'cor.posicao') return `Cor ${a.posicao} da barra` + (a.posicao === 1 ? ' (de fábrica, o verde)' : '');
   if (nome === 'espessura.escolher') return 'Traço ' + { fina: 'fino', media: 'médio', grossa: 'grosso' }[a.espessura];
   return { 'tela.ampliar': a.modo === 'mais' ? 'Ampliar mais' : a.modo === 'menos' ? 'Ampliar menos' : 'Ampliar (liga e desliga)',
     'tela.congelar': 'Congelar a tela', 'quadro.alternar': 'Quadro (branco, negro, tela)', 'forma.preencher': 'Preenchimento',
@@ -190,6 +207,7 @@ document.querySelectorAll('input[name=nivel]').forEach(r => r.onchange = async (
     $('agMsg').textContent = { desligado: 'Agentes desligados.', ler: 'Agentes podem só ler.', agir: 'Agentes podem agir.' }[r.value];
   } catch (e) { $('agMsg').textContent = 'Não deu para mudar: ' + e; }
 });
+$('coresDeFabrica').onclick = () => { ponte?.comandoNaBarra('cores.restaurar'); $('coresDeFabrica').textContent = 'Cores de fábrica de volta'; };
 $('copiar').onclick = async () => {
   try { await navigator.clipboard.writeText($('mcpConfig').textContent); $('agMsg').textContent = 'Copiado.'; }
   catch { getSelection().selectAllChildren($('mcpConfig')); $('agMsg').textContent = 'Selecionado: use Ctrl+C.'; }

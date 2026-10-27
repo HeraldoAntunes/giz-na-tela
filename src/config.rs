@@ -56,11 +56,14 @@ pub struct Config {
     pub agentes: String,
     pub caneta_vista: bool,
     pub dicas_ink: u32,
+    // escolhas da barra que voltam ao abrir (cor, espessura, tipos de seta e de cota, cores das bolinhas)
+    pub preferencias: serde_json::Value,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Config { barra: None, recolhida: false, agentes: "desligado".into(), caneta_vista: false, dicas_ink: 0 }
+        Config { barra: None, recolhida: false, agentes: "desligado".into(), caneta_vista: false, dicas_ink: 0,
+            preferencias: serde_json::Value::Null }
     }
 }
 

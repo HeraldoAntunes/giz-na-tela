@@ -53,14 +53,8 @@
   .cor.ativo { box-shadow: 0 0 0 2px var(--fundo), 0 0 0 4px var(--realce); }
   .ponto { background: currentColor; border-radius: 50%; }
   .ponto.fino { width: 5px; height: 5px; } .ponto.medio { width: 9px; height: 9px; } .ponto.grosso { width: 14px; height: 14px; }
-  /* cores e tamanhos ficam aqui, não em style="" no HTML: a política de segurança (CSP) do programa bloqueia estilo
-     escrito direto nos elementos */
-  .cor[data-args*="#e53935"] { background: #e53935; }
-  .cor[data-args*="#1e6fd9"] { background: #1e6fd9; }
-  .cor[data-args*="#2e9d4a"] { background: #2e9d4a; }
-  .cor[data-args*="#f9c80e"] { background: #f9c80e; }
-  .cor[data-args*="#111111"] { background: #111111; }
-  .cor[data-args*="#ffffff"] { background: #ffffff; }
+  /* tamanhos aqui e cores das bolinhas pelo script (o professor troca as cores): a política de segurança (CSP) do
+     programa bloqueia style="" escrito direto nos elementos */
   .ocupado { opacity: .5; pointer-events: none; }
   body.fixado .desenho { opacity: .45; }
 </style>
@@ -91,11 +85,20 @@
     <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"borracha"}' title="Borracha (B)">
       <svg viewBox="0 0 24 24"><path d="M7 20h13"/><path d="M4.5 15.5l9-9a2 2 0 0 1 2.8 0l2.2 2.2a2 2 0 0 1 0 2.8L11 19H8z"/><path d="M9.5 10.5l4.5 4.5"/></svg>
     </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"mover"}' title="Mover (Espaço): toque num traço, forma, texto ou carimbo e arraste (Ctrl+Z desfaz)">
+      <svg viewBox="0 0 24 24"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12"/><path d="M11 11.5v-8a1.5 1.5 0 0 1 3 0V12"/><path d="M14 11.5V5a1.5 1.5 0 0 1 3 0v7"/><path d="M17 9.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-1.2a6 6 0 0 1-4.6-2.2L4.1 15.4a1.6 1.6 0 0 1 2.3-2.2L8 15"/></svg>
+    </button>
     <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"reta"}' title="Reta (L; Shift: de 15 em 15 graus)">
       <svg viewBox="0 0 24 24"><path d="M5 19L19 5"/></svg>
     </button>
-    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"seta"}' title="Seta (S; Shift: de 15 em 15 graus)">
-      <svg viewBox="0 0 24 24"><path d="M5 19L19 5"/><path d="M10 5h9v9"/></svg>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"seta"}' id="btSeta" title="Seta (S; Shift: de 15 em 15 graus)">
+      <svg viewBox="0 0 24 24"><path d="M5 19L19 5"/><path id="pontaSeta" d="M10 5h9v9"/></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"cota"}' id="btCota" title="Cota (K)">
+      <svg viewBox="0 0 24 24"><path d="M3 6v12M21 6v12"/><path d="M4 12h16"/><g id="pontasCota"><path d="M8 9.5L4.5 12 8 14.5" /><path d="M16 9.5l3.5 2.5-3.5 2.5"/></g></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"medir"}' id="btMedir" title="Medir (J)">
+      <svg viewBox="0 0 24 24"><rect x="2.5" y="8" width="19" height="8" rx="1"/><path d="M6 8v3M9.5 8v2M13 8v3M16.5 8v2"/></svg>
     </button>
     <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"retangulo"}' title="Retângulo (R; Shift: quadrado)">
       <svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/></svg>
@@ -144,12 +147,12 @@
   <div class="sep"></div>
 
   <div class="desenho grade">
-    <button class="cor" data-cmd="cor.escolher" data-args='{"cor":"#e53935"}' title="Vermelho (1)"></button>
-    <button class="cor" data-cmd="cor.escolher" data-args='{"cor":"#1e6fd9"}' title="Azul (2)"></button>
-    <button class="cor" data-cmd="cor.escolher" data-args='{"cor":"#2e9d4a"}' title="Verde (3)"></button>
-    <button class="cor" data-cmd="cor.escolher" data-args='{"cor":"#f9c80e"}' title="Amarelo (4)"></button>
-    <button class="cor" data-cmd="cor.escolher" data-args='{"cor":"#111111"}' title="Preto (5)"></button>
-    <button class="cor" data-cmd="cor.escolher" data-args='{"cor":"#ffffff"}' title="Branco (6)"></button>
+    <button class="cor" data-cmd="cor.posicao" data-args='{"posicao":1}' title="Cor 1"></button>
+    <button class="cor" data-cmd="cor.posicao" data-args='{"posicao":2}' title="Cor 2"></button>
+    <button class="cor" data-cmd="cor.posicao" data-args='{"posicao":3}' title="Cor 3"></button>
+    <button class="cor" data-cmd="cor.posicao" data-args='{"posicao":4}' title="Cor 4"></button>
+    <button class="cor" data-cmd="cor.posicao" data-args='{"posicao":5}' title="Cor 5"></button>
+    <button class="cor" data-cmd="cor.posicao" data-args='{"posicao":6}' title="Cor 6"></button>
     <button class="bt tm" data-cmd="espessura.escolher" data-args='{"espessura":"fina"}' title="Traço fino (7)"><span class="ponto fino"></span></button>
     <button class="bt tm" data-cmd="espessura.escolher" data-args='{"espessura":"media"}' title="Traço médio (8)"><span class="ponto medio"></span></button>
     <button class="bt tm" data-cmd="espessura.escolher" data-args='{"espessura":"grossa"}' title="Traço grosso (9)"><span class="ponto grosso"></span></button>
@@ -186,9 +189,10 @@
 <script>
 // A barra guarda o estado e executa os comandos do registro (comandos.js). Botão, atalho, Esc, Ctrl+Alt+F e pedido de
 // fora (API e MCP) entram por executar(); a camada só desenha e devolve o estado dela depois de cada pedido.
-const { POR_NOME, ATALHOS, ESPESSURAS, COMANDOS, validar } = window.GizTela;
+const { POR_NOME, ATALHOS, ESPESSURAS, COMANDOS, DE_NOVO, COTAS, CORES, validar } = window.GizTela;
+const CORES_DE_FABRICA = CORES.map(c => c[0]);
 const ponte = window.ponte, $ = id => document.getElementById(id);
-const S = { ferramenta: 'caneta', cor: '#e53935', espessura: 'media', quadro: 'tela', preencher: 'nada', some: false,
+const S = { cores: [...CORES_DE_FABRICA], escala: null, ultimaMedida: null, ferramenta: 'caneta', cor: CORES_DE_FABRICA[0], espessura: 'media', quadro: 'tela', preencher: 'nada', seta: 'aberta', setaDupla: false, cota: 'setas', some: false,
   fixado: false, recolhido: false, congelado: false, ampliado: false, tracos: 0, desfazer: false, refazer: false,
   largura: 0, altura: 0 };
 const QUADROS = ['tela', 'branco', 'negro'], PREENCHER = ['nada', 'translucido', 'cheio'];
@@ -224,11 +228,37 @@ const EXEC = {
     S.cor = p.cor; if (S.ferramenta === 'borracha') S.ferramenta = 'caneta';
     await camada('cor', p.cor);
   },
+  'cor.posicao': p => EXEC['cor.escolher']({ cor: S.cores[p.posicao - 1] }),
+  // trocar a cor de uma bolinha: pelo botão, abre o seletor de cores do Windows; de fora, a cor vem no pedido
+  'cor.trocar': async (p, ctx) => {
+    let cor = p.cor;
+    if (!cor) {
+      if (ctx.origem === 'agente') throw new Error('cor.trocar: mande a cor (#rrggbb)');
+      cor = await ponte.escolherCor(S.cores[p.posicao - 1]);
+      if (!cor) return;   // o professor fechou o seletor sem escolher
+    }
+    S.cores[p.posicao - 1] = cor.toLowerCase();
+    await EXEC['cor.escolher']({ cor: S.cores[p.posicao - 1] });
+  },
+  'cores.restaurar': async () => {
+    S.cores = [...CORES_DE_FABRICA];
+    if (!S.cores.includes(S.cor)) await EXEC['cor.escolher']({ cor: S.cores[0] });
+  },
   'espessura.escolher': async p => { S.espessura = p.espessura; await camada('espessura', ESPESSURAS[p.espessura]); },
   'desenho.desfazer': () => camada('desfazer'),
   'desenho.refazer': () => camada('refazer'),
   'desenho.limpar': () => camada('limpar'),
   'quadro.alternar': async p => { S.quadro = p.quadro ?? proximo(QUADROS, S.quadro); await camada('quadro', S.quadro); },
+  'seta.estilo': async p => {
+    if (p.estilo === undefined && p.dupla === undefined) {   // o próximo: simples aberta, simples cheia, dupla aberta, dupla cheia
+      const i = (['aberta', 'cheia'].indexOf(S.seta) + (S.setaDupla ? 2 : 0) + 1) % 4;
+      S.seta = i % 2 ? 'cheia' : 'aberta'; S.setaDupla = i >= 2;
+    } else { S.seta = p.estilo ?? S.seta; S.setaDupla = p.dupla ?? S.setaDupla; }
+    await camada('seta', { ponta: S.seta, dupla: S.setaDupla });
+  },
+  'cota.estilo': async p => { S.cota = p.estilo ?? proximo(COTAS, S.cota); await camada('cota', S.cota); },
+  'objeto.mover': p => camada('mover', p),
+  'cota.escala': p => camada('escala', p.valor && p.unidade && p.pixels ? { valor: p.valor, unidade: p.unidade, px: p.pixels } : null),
   'forma.preencher': async p => { S.preencher = p.modo ?? proximo(PREENCHER, S.preencher); await camada('preencher', S.preencher); },
   'tinta.some': async p => { S.some = p.ligado ?? !S.some; await camada('some', S.some); },
   'tela.congelar': p => camada('congelar', p.ligado ?? !S.congelado),
@@ -279,9 +309,33 @@ const EXEC = {
   },
 };
 
+// escolhas que valem para a próxima vez; a ferramenta não entra (o programa abre sempre na caneta)
+const preferencias = () => ({ cor: S.cor, espessura: S.espessura, seta: S.seta, setaDupla: S.setaDupla, cota: S.cota,
+  preencher: S.preencher, cores: S.cores });
+let ultimasPreferencias = '';
+function guardarPreferencias() {
+  const j = JSON.stringify(preferencias());
+  if (j !== ultimasPreferencias) { ultimasPreferencias = j; ponte?.preferencias(preferencias()); }
+}
+// o arquivo de ajustes pode ter sido mexido à mão: cada valor só entra se for válido
+async function aplicarPreferencias(p) {
+  if (!p || typeof p !== 'object') return;
+  const cor = c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
+  if (Array.isArray(p.cores) && p.cores.length === S.cores.length && p.cores.every(cor)) S.cores = p.cores.map(c => c.toLowerCase());
+  if (cor(p.cor)) { S.cor = p.cor.toLowerCase(); await camada('cor', S.cor); }
+  if (ESPESSURAS[p.espessura]) { S.espessura = p.espessura; await camada('espessura', ESPESSURAS[p.espessura]); }
+  if (['aberta', 'cheia'].includes(p.seta)) S.seta = p.seta;
+  if (typeof p.setaDupla === 'boolean') S.setaDupla = p.setaDupla;
+  await camada('seta', { ponta: S.seta, dupla: S.setaDupla });
+  if (COTAS.includes(p.cota)) { S.cota = p.cota; await camada('cota', S.cota); }
+  if (['nada', 'translucido', 'cheio'].includes(p.preencher)) { S.preencher = p.preencher; await camada('preencher', S.preencher); }
+  ultimasPreferencias = JSON.stringify(preferencias());
+  render();
+}
 function estadoPublico() {
   return { versao: window.CONFIG?.versao, modo: S.fixado ? 'mouse livre' : 'escrevendo', ferramenta: S.ferramenta,
-    cor: S.cor, espessura: S.espessura, quadro: S.quadro, preencher: S.preencher, tinta_some: S.some,
+    cor: S.cor, espessura: S.espessura, quadro: S.quadro, preencher: S.preencher, ponta_da_seta: S.seta, seta_dupla: S.setaDupla, tipo_de_cota: S.cota, regua: S.escala, ultima_medida: S.ultimaMedida,
+    cores: S.cores, tinta_some: S.some,
     barra_recolhida: S.recolhido, congelado: S.congelado, ampliado: S.ampliado, desenhos: S.tracos,
     pode_desfazer: S.desfazer, pode_refazer: S.refazer, tela: { largura: S.largura, altura: S.altura } };
 }
@@ -315,6 +369,7 @@ function executar(nome, args, origem = 'botao', nivel = 'agir') {
     if (c.volta_a_escrever) await voltarAEscrever(ctx);
     const valor = await EXEC[nome](p, ctx);
     render();
+    guardarPreferencias();
     if (origem === 'agente' && c.aviso) aviso(`Agente: ${c.aviso(p)}${c.desfaz ? '. Ctrl+Z desfaz' : ''}`);
     return valor ?? estadoPublico();
   });
@@ -324,15 +379,37 @@ function executar(nome, args, origem = 'botao', nivel = 'agir') {
 // pedido da API local (o host já conferiu o token e diz o nível que o professor liberou)
 window.executarDeFora = (nome, args, nivel) => executar(nome, args, 'agente', nivel);
 window.tecla = k => {
-  const a = ATALHOS[String(k).toLowerCase()];
+  let a = ATALHOS[String(k).toLowerCase()];
+  if (a?.[0] === 'ferramenta.escolher' && a[1].ferramenta === S.ferramenta && DE_NOVO[S.ferramenta]) a = DE_NOVO[S.ferramenta];
   if (a) executar(a[0], a[1], 'atalho').catch(e => aviso(e.message));
 };
 
 function render() {
   const marca = (sel, f) => document.querySelectorAll(sel).forEach(b => b.classList.toggle('ativo', f(argsDe(b))));
   marca('[data-cmd="ferramenta.escolher"]', a => a.ferramenta === S.ferramenta);
-  marca('[data-cmd="cor.escolher"]', a => a.cor === S.cor);
+  document.querySelectorAll('[data-cmd="cor.posicao"]').forEach(b => {
+    const i = argsDe(b).posicao, c = S.cores[i - 1], ativa = c === S.cor;
+    b.style.background = c;   // CSSOM: a CSP só bloqueia style="" escrito no HTML
+    b.classList.toggle('ativo', ativa);
+    b.title = `Cor ${i} (tecla ${i})` + (ativa ? '. Toque de novo para trocar esta cor' : '');
+  });
   marca('[data-cmd="espessura.escolher"]', a => a.espessura === S.espessura);
+  // o ícone da seta mostra a ponta que vale agora
+  const cheia = S.seta === 'cheia', ponta = cheia ? 'M19 5l-1.2 9.2-8-8z' : 'M10 5h9v9', rabo = cheia ? 'M5 19l1.2-9.2 8 8z' : 'M14 19H5v-9';
+  $('pontaSeta').setAttribute('d', ponta + (S.setaDupla ? rabo : ''));
+  $('pontaSeta').setAttribute('fill', cheia ? 'currentColor' : 'none');
+  const tipos = ['simples, ponta aberta', 'simples, ponta cheia', 'dupla, ponta aberta', 'dupla, ponta cheia'];
+  const iSeta = (cheia ? 1 : 0) + (S.setaDupla ? 2 : 0);
+  $('btSeta').title = `Seta (S; Shift: de 15 em 15 graus): ${tipos[iSeta]}. Toque de novo (ou S) para ${tipos[(iSeta + 1) % 4]}`;
+  const cotas = { setas: 'com setas', tracos: 'com tracinhos (arquitetura)' };
+  $('pontasCota').innerHTML = S.cota === 'tracos' ? '<path d="M1.5 14.5l3-5M19.5 14.5l3-5"/>'
+    : '<path d="M8 9.5L4.5 12 8 14.5"/><path d="M16 9.5l3.5 2.5-3.5 2.5"/>';
+  $('btCota').title = `Cota (K) ${cotas[S.cota]}: arraste de ponta a ponta e, ao soltar, digite a medida (ou Enter ` +
+    `para deixar sem). Toque de novo (ou K) para a cota ${cotas[proximo(COTAS, S.cota)]}`;
+  const r = S.escala;
+  $('btMedir').title = 'Medir (J): arraste de ponta a ponta e a medida aparece sozinha, ' + (r
+    ? `em ${r.unidade} (régua: ${String(r.valor).replace('.', ',')} ${r.unidade}). Para trocar a régua, faça uma Cota sobre algo conhecido e digite a medida com a unidade`
+    : 'em pixels. Para medir em cm, faça antes uma Cota sobre algo de tamanho conhecido e digite a medida com a unidade (ex.: 10 cm)');
   document.body.classList.toggle('fixado', S.fixado);
   document.body.classList.toggle('recolhido', S.recolhido);
   $('fixar').classList.toggle('ligado', S.fixado);
@@ -360,7 +437,11 @@ document.querySelectorAll('[data-cmd]').forEach(b => b.addEventListener('click',
   if (b.classList.contains('ocupado')) return;
   const lento = b.dataset.cmd.startsWith('captura.');   // retratar e mandar ao Giz demoram: o botão espera
   if (lento) b.classList.add('ocupado');
-  try { await executar(b.dataset.cmd, argsDe(b), 'botao'); }
+  // segundo toque numa ferramenta já escolhida: troca a opção dela (ex.: ponta da seta)
+  const f = argsDe(b).ferramenta, pos = argsDe(b).posicao;
+  const outra = b.dataset.cmd === 'ferramenta.escolher' && f === S.ferramenta ? DE_NOVO[f]
+    : b.dataset.cmd === 'cor.posicao' && S.cores[pos - 1] === S.cor ? ['cor.trocar', { posicao: pos }] : null;
+  try { await (outra ? executar(outra[0], outra[1], 'botao') : executar(b.dataset.cmd, argsDe(b), 'botao')); }
   catch (e) { aviso(e.message); }
   finally { b.classList.remove('ocupado'); }
 }));
@@ -387,8 +468,9 @@ document.addEventListener('keydown', e => {
 // abriu recolhida (como o professor deixou da última vez): botão pequeno e mouse livre
 if (window.CONFIG?.recolhida) { S.recolhido = true; fixar(true); }
 render();
-// a camada pode ter terminado de abrir antes desta página e o primeiro aviso dela se perdeu: pede de novo
-camada('estado').catch(() => {});
+// abre com as escolhas da última vez (cor, espessura, tipos de seta e de cota, preenchimento e cores das bolinhas);
+// a camada pode ter terminado de abrir antes desta página e o primeiro aviso dela se perdeu: pede o estado de novo
+aplicarPreferencias(window.CONFIG?.preferencias).catch(() => {}).finally(() => camada('estado').catch(() => {}));
 </script>
 </body>
 </html>

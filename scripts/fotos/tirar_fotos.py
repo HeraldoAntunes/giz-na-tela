@@ -23,13 +23,45 @@ SAIDA = RAIZ / "docs" / "img"
 EDGE = Path(r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe")
 
 
-def foto(nome, caixa=None):
+PRONTAS = {}   # as fotos só vão para docs/img no fim, e só se todas passarem na trava
+
+
+def slide_na_frente(img):
+    """A borda esquerda do slide (fundo #f4f6f8) tem de estar na foto: se outra janela ficou na frente, a foto
+    mostraria o que o professor tem aberto no computador, e nada é gravado."""
+    w, h = img.size
+    return all(max(abs(c - r) for c, r in zip(img.getpixel((round(w * 0.012), round(h * f)))[:3], (244, 246, 248))) <= 6
+               for f in (0.3, 0.5, 0.7))
+
+
+def foto(nome, conferir=True):
     img = ImageGrab.grab()
-    if caixa:
-        img = img.crop(caixa)
-    img.save(SAIDA / f"{nome}.png", optimize=True)
+    if conferir and not slide_na_frente(img):
+        raise SystemExit(f"A foto {nome} não mostra o slide (outra janela ficou na frente). Nenhuma foto foi gravada.")
+    PRONTAS[nome] = img
     print("foto:", nome, img.size)
     return img
+
+
+def slide_por_cima():
+    """Põe a janela do slide "sempre por cima" (o Windows não deixa um programa roubar o foco de quem está usando o
+    computador; "sempre por cima" não depende do foco). O Giz na Tela, aberto depois, fica acima dela."""
+    u = ctypes.windll.user32
+    achadas = []
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    def cada(h, _):
+        n = u.GetWindowTextLengthW(h)
+        b = ctypes.create_unicode_buffer(n + 1)
+        u.GetWindowTextW(h, b, n + 1)
+        if b.value.startswith("Plano inclinado") and u.IsWindowVisible(h):
+            achadas.append(h)
+        return True
+
+    u.EnumWindows(cada, None)
+    for h in achadas:
+        u.SetWindowPos(ctypes.c_void_p(h), ctypes.c_void_p(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040)
+    return bool(achadas)
 
 
 def circulo(cx, cy, rx, ry, voltas=1.08, n=70):
@@ -45,13 +77,21 @@ def circulo(cx, cy, rx, ry, voltas=1.08, n=70):
 def main():
     tmp = Path(tempfile.mkdtemp(prefix="giz-na-tela-fotos-"))
     edge = subprocess.Popen([str(EDGE), "--kiosk", (RAIZ / "scripts" / "fotos" / "slide.html").as_uri(),
-                             "--edge-kiosk-type=fullscreen", f"--user-data-dir={tmp / 'edge'}", "--no-first-run",
+                             "--edge-kiosk-type=fullscreen", "--window-position=0,0",   # a tela principal, a que o Giz na Tela cobre
+                             f"--user-data-dir={tmp / 'edge'}", "--no-first-run",
                              "--no-default-browser-check"])
     time.sleep(4)
     a = None
     try:
+        ctypes.windll.user32.SetProcessDPIAware()
+        if not slide_por_cima():
+            raise SystemExit("A janela do slide não apareceu. Nenhuma foto foi gravada.")
+        time.sleep(1)
+        if not slide_na_frente(ImageGrab.grab()):
+            raise SystemExit("O slide não ficou na frente. Nenhuma foto foi gravada.")
         if "--so-referencia" in sys.argv:
             foto("_referencia")
+            PRONTAS["_referencia"].save(SAIDA / "_referencia.png")
             return 0
         a = Anotador(RAIZ / "target" / "release" / "GizNaTela.exe", tmp / "dados", tmp / "capturas", "agir")
         L, A = a.estado()["tela"]["largura"], a.estado()["tela"]["altura"]
@@ -82,7 +122,7 @@ def main():
         k = ImageGrab.grab().size[0] / L
         ctypes.windll.user32.SetCursorPos(round(X(.735) * k), round(Y(.42) * k))
         time.sleep(6.5)
-        foto("uso-holofote")
+        foto("uso-holofote", conferir=False)   # o holofote escurece a borda
         a.valor("ferramenta.escolher", ferramenta="caneta")
         # 4) quadro negro por cima de tudo, para resolver uma conta
         a.valor("quadro.alternar", quadro="negro")
@@ -94,13 +134,16 @@ def main():
         a.valor("texto.escrever", texto="Confira:\nsen 30° = 0,5", x=X(.57), y=Y(.22), tamanho=40, cor="#f9c80e")
         a.valor("cor.escolher", cor="#ffffff")
         time.sleep(6.5)
-        foto("uso-quadro-negro")
+        foto("uso-quadro-negro", conferir=False)   # o quadro cobre o slide inteiro
         a.valor("quadro.alternar", quadro="tela")
         a.valor("desenho.limpar")
         # 5) ajuda e ajustes, com a barra ao lado
         a.valor("ajuda.abrir")
         time.sleep(6.5)
         foto("uso-ajuda")
+        for nome, img in PRONTAS.items():
+            img.save(SAIDA / f"{nome}.png", optimize=True)
+        print("gravadas em docs/img:", ", ".join(PRONTAS))
         return 0
     finally:
         if a:

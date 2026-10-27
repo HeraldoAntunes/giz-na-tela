@@ -50,6 +50,9 @@ window.ponte = {
   agentes: nivel => inv('agentes', { nivel }),
   canetaVista: () => inv('caneta_vista'),
   dicaInk: () => inv('dica_ink_mostrada'),
+  preferencias: p => inv('preferencias', { p }),
+  escolherCor: atual => inv('escolher_cor', { atual }),
+  comandoNaBarra: nome => inv('comando_na_barra', { nome }),
 };"#;
 
 pub fn js(app: &AppHandle, janela: &str, codigo: &str) {
@@ -86,7 +89,7 @@ fn responder(estado: State<Estado>, id: u64, r: Value) {
 }
 
 // a barra só pode pedir à camada as funções desta lista; o valor vai serializado em JSON, nunca colado como código
-const DA_CAMADA: [&str; 15] = ["estado", "cor", "ferramenta", "espessura", "desfazer", "refazer", "limpar", "quadro", "some",
+const DA_CAMADA: [&str; 19] = ["estado", "seta", "cota", "escala", "mover", "cor", "ferramenta", "espessura", "desfazer", "refazer", "limpar", "quadro", "some",
     "preencher", "congelar", "ampliar", "aviso", "adicionar", "escrevendo"];
 #[tauri::command]
 async fn camada(app: AppHandle, nome: String, valor: Value) -> Result<Value, String> {
@@ -119,7 +122,7 @@ fn fixar(app: AppHandle, sim: bool) -> bool {
 }
 
 // recolher: a barra encolhe para o botão do giz, presa à direita de onde estava; abrir faz o caminho de volta
-const BARRA: (f64, f64) = (132.0, 510.0);
+const BARRA: (f64, f64) = (132.0, 544.0);   // uma fileira a mais para a cota
 const BOTAO: f64 = 56.0;
 fn deslocamento_do_botao(k: f64) -> i32 { ((BARRA.0 - BOTAO) * k) as i32 }
 #[tauri::command]
@@ -258,12 +261,34 @@ fn dica_ink_mostrada(app: AppHandle) {
     estado.config_mudou.store(true, Ordering::Relaxed);
 }
 
+// a barra manda as escolhas dela a cada mudança; vão para o config.json com os outros ajustes
+#[tauri::command]
+fn preferencias(app: AppHandle, p: Value) {
+    if p.to_string().len() > 4096 { return; }
+    let estado = app.state::<Estado>();
+    estado.config.lock().unwrap().preferencias = p;
+    estado.config_mudou.store(true, Ordering::Relaxed);
+}
+// seletor de cores do Windows, por cima da barra (segundo toque numa bolinha de cor)
+#[tauri::command]
+async fn escolher_cor(app: AppHandle, atual: String) -> Option<String> {
+    let dona = app.get_webview_window("barra").and_then(|w| w.hwnd().ok()).map(|h| h.0 as isize).unwrap_or(0);
+    tauri::async_runtime::spawn_blocking(move || sistema::escolher_cor(dona, &atual)).await.ok().flatten()
+}
+// a ajuda só pode pedir à barra os comandos desta lista
+#[tauri::command]
+fn comando_na_barra(app: AppHandle, nome: String) {
+    if ["cores.restaurar"].contains(&nome.as_str()) {
+        js(&app, "barra", &format!("executar({}, {{}}, 'botao')", json!(nome)));
+    }
+}
+
 fn iniciar_js(app: &AppHandle) -> String {
     let estado = app.state::<Estado>();
     let cfg = estado.config.lock().unwrap().clone();
     // a dica do Windows Ink aparece no máximo 3 vezes e nunca depois que uma caneta de verdade chegou
     let config = json!({ "versao": VERSAO, "recolhida": cfg.recolhida, "caneta_vista": cfg.caneta_vista,
-                         "dica_ink": !cfg.caneta_vista && cfg.dicas_ink < 3 });
+                         "dica_ink": !cfg.caneta_vista && cfg.dicas_ink < 3, "preferencias": cfg.preferencias });
     format!("window.CONFIG = {config};{PONTE}")
 }
 
@@ -288,7 +313,8 @@ fn main() {
     let resultado = tauri::Builder::default()
         .manage(estado)
         .invoke_handler(tauri::generate_handler![responder, camada, estado_camada, tecla, fixar, recolher, congelar,
-            salvar, capturar, fim, ajuda, info, agentes, caneta_vista, dica_ink_mostrada])
+            salvar, capturar, fim, ajuda, info, agentes, caneta_vista, dica_ink_mostrada, preferencias, escolher_cor,
+            comando_na_barra])
         // Ctrl+Alt+F liga e desliga o Mouse livre de qualquer programa (com ele ligado o teclado não chega aqui)
         .plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(|app, _atalho, ev| {
             if ev.state() == ShortcutState::Pressed {
