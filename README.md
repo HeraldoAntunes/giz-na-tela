@@ -3,6 +3,7 @@
 [![Testes](https://github.com/HeraldoAntunes/giz-na-tela/actions/workflows/testes.yml/badge.svg)](https://github.com/HeraldoAntunes/giz-na-tela/actions/workflows/testes.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/HeraldoAntunes/giz-na-tela/badge)](https://scorecard.dev/viewer/?uri=github.com/HeraldoAntunes/giz-na-tela)
 [![Versão](https://img.shields.io/github/v/release/HeraldoAntunes/giz-na-tela?label=vers%C3%A3o)](https://github.com/HeraldoAntunes/giz-na-tela/releases/latest)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23690523.svg)](https://doi.org/10.5281/zenodo.23690523)
 [![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)](LICENSE)
 [![Testado no Windows 11](https://img.shields.io/badge/testado%20no-Windows%2011-0078D6)](#requisitos)
 
@@ -112,6 +113,11 @@ versão portátil saem de `installer\build.ps1` (Inno Setup 6).
 Com apoio de assistentes de programação de inteligência artificial, usados como ferramenta: a concepção, as decisões,
 a revisão e os testes são do autor. O código é todo próprio; ideias de recursos vieram do uso de outros anotadores de
 tela em sala de aula. Como contribuir: [CONTRIBUTING.md](.github/CONTRIBUTING.md).
+
+## Como citar
+
+Antunes, H. *Giz na Tela* (software livre). Zenodo. <https://doi.org/10.5281/zenodo.23690523>. Esse DOI aponta sempre
+para a versão mais recente; o botão "Cite this repository", no alto da página do GitHub, dá a citação pronta.
 
 ## Licença
 

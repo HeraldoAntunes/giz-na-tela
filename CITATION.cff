@@ -3,9 +3,11 @@ message: "Se usar o Giz na Tela em pesquisa ou material didático, cite-o assim.
 title: "Giz na Tela"
 abstract: "Anotador de tela livre e offline: camada transparente por cima de qualquer programa para escrever com a mesa digitalizadora, com comandos para atalhos, testes e agentes de IA."
 type: software
+doi: "10.5281/zenodo.23690523"
 authors:
   - family-names: "Antunes"
     given-names: "Heraldo"
+    orcid: "https://orcid.org/0000-0002-5495-0381"
 license: MIT
 version: "1.0.1"
 date-released: "2026-10-27"
@@ -15,3 +17,10 @@ keywords:
   - mesa digitalizadora
   - ensino
   - software livre
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.23690523"
+    description: "DOI de todas as versões no Zenodo (aponta sempre para a mais recente)"
+  - type: doi
+    value: "10.5281/zenodo.23690524"
+    description: "DOI da versão 1.0.1"
