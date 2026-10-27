@@ -1,0 +1,198 @@
+<!doctype html>
+<!-- Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE). Ajuda, ajustes e Sobre -->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Giz na Tela: ajuda e ajustes</title>
+<style>
+  :root { --fundo: #ffffff; --painel: #f6f7f9; --borda: #e3e6ea; --texto: #2b2f36; --suave: #5f6670; --verde: #1f6b45;
+          --verde-claro: #e7f3ec; --realce: #1e6fd9; }
+  html, body { margin: 0; background: var(--fundo); color: var(--texto); font: 14px/1.5 "Segoe UI", sans-serif; }
+  header { display: flex; gap: 14px; align-items: center; padding: 16px 20px 12px; border-bottom: 1px solid var(--borda); }
+  header b { font-size: 20px; display: block; line-height: 1.2; }
+  header span { color: var(--suave); font-size: 13px; }
+  nav { display: flex; gap: 4px; padding: 8px 16px 0; border-bottom: 1px solid var(--borda); flex-wrap: wrap; }
+  nav button { border: 0; background: none; font: 600 13px "Segoe UI", sans-serif; color: var(--suave); padding: 8px 12px;
+               border-bottom: 3px solid transparent; cursor: pointer; }
+  nav button.ativo { color: var(--verde); border-bottom-color: var(--verde); }
+  main { padding: 6px 22px 22px; }
+  section { display: none; }
+  section.ativo { display: block; }
+  h2 { font-size: 15px; margin: 18px 0 6px; color: var(--verde); }
+  p { margin: 6px 0; }
+  kbd { font: 12px Consolas, monospace; background: var(--painel); border: 1px solid var(--borda); border-bottom-width: 2px;
+        border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+  table { border-collapse: collapse; width: 100%; margin-top: 6px; }
+  td { border-bottom: 1px solid var(--borda); padding: 5px 6px; vertical-align: top; }
+  td:first-child { width: 110px; }
+  .dica { background: var(--verde-claro); border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
+  .niveis label { display: block; padding: 8px 10px; border: 1px solid var(--borda); border-radius: 8px; margin: 6px 0; cursor: pointer; }
+  .niveis label:has(input:checked) { border-color: var(--verde); background: var(--verde-claro); }
+  .niveis small { display: block; color: var(--suave); margin-left: 24px; }
+  pre { background: var(--painel); border: 1px solid var(--borda); border-radius: 8px; padding: 10px; overflow-x: auto;
+        font: 12px Consolas, monospace; white-space: pre-wrap; word-break: break-all; }
+  .btn { border: 1px solid var(--borda); background: var(--fundo); border-radius: 8px; padding: 5px 12px; cursor: pointer;
+         font: 600 13px "Segoe UI", sans-serif; color: var(--texto); }
+  .btn:hover { background: var(--painel); }
+  dl { margin: 8px 0; }
+  dt { font-weight: 600; margin-top: 10px; }
+  dd { margin: 2px 0 0; color: var(--texto); }
+  .aviso { color: var(--suave); font-size: 12.5px; margin-top: 16px; }
+  #agMsg { color: var(--suave); font-size: 13px; min-height: 1.5em; }
+</style>
+</head>
+<body>
+<header>
+  <svg width="52" height="52" viewBox="0 0 64 64" aria-hidden="true"><rect x="2" y="2" width="60" height="60" rx="14" fill="#1f6b45"/>
+    <rect x="11" y="14" width="42" height="28" rx="3" fill="none" stroke="#fff" stroke-width="3.4"/>
+    <path d="M18 33c5-7 9-8 13-4s7 1 10-5" fill="none" stroke="#f6f2e7" stroke-width="3.6" stroke-linecap="round"/>
+    <path d="M24 51h16M32 42v9" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/></svg>
+  <div><b>Giz na Tela</b><span id="versao">versão</span><br>
+    <span>Escrever por cima de qualquer programa com a mesa digitalizadora, o mouse ou a tela de toque.</span></div>
+</header>
+<nav>
+  <button data-aba="uso" class="ativo">Como usar</button>
+  <button data-aba="atalhos">Atalhos</button>
+  <button data-aba="mesa">Mesa digitalizadora</button>
+  <button data-aba="agentes">Agentes de IA</button>
+  <button data-aba="sobre">Sobre</button>
+</nav>
+<main>
+<section id="uso" class="ativo">
+  <h2>Escrever e soltar o mouse</h2>
+  <p>O botão grande da barra diz o modo de agora. <b>Escrevendo</b> (azul): a caneta e o mouse desenham por cima de
+    tudo. <b>Mouse livre</b> (amarelo): o clique vai para os programas de baixo (passar o slide, abrir um arquivo) e a
+    tinta continua na tela. Toque no botão para trocar.</p>
+  <p class="dica">Com o <b>Mouse livre</b>, o teclado também vai para o programa de baixo. Para voltar a escrever de
+    qualquer programa: <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd>, ou toque no botão da barra.</p>
+  <h2>Recolher a barra</h2>
+  <p>O traço no canto de cima da barra a recolhe num botão verde pequeno: o mouse fica livre e a tinta continua. Toque
+    no botão verde para abrir a barra e voltar a escrever; arraste-o para mudar de lugar. O Giz na Tela lembra onde a
+    barra ficou e se estava recolhida.</p>
+  <h2>Esc volta um passo</h2>
+  <p><kbd>Esc</kbd> nunca fecha nem apaga: desliga o ampliar, depois o congelar, depois o quadro, volta para a caneta e,
+    já na caneta, solta o mouse.</p>
+  <h2>Ferramentas</h2>
+  <p>Caneta (com a pressão da mesa), marca-texto, borracha, reta, seta, retângulo e elipse (com <kbd>Shift</kbd>, reta de
+    15 em 15 graus e quadrado ou círculo), texto, numeração (1, 2, 3...), visto e X para corrigir, holofote (escurece em
+    volta do ponteiro) e lupa. A roda do mouse muda o tamanho do holofote e o aumento da lupa.</p>
+  <p><b>Quadro</b> cobre a tela com fundo branco ou negro. <b>Congelar</b> deixa a tela parada (um vídeo, uma animação)
+    enquanto você explica. <b>Ampliar</b> aumenta um ponto da tela para escrever em cima. <b>Preenchimento</b> muda o
+    retângulo e a elipse (só contorno, translúcido ou cheio, que tapa a resposta). <b>Tinta que some</b> apaga sozinha
+    em 3 segundos, para apontar sem sujar a tela.</p>
+  <h2>Guardar o que foi escrito</h2>
+  <p><b>Salvar</b> grava a tela com a tinta como imagem em <span data-info="capturas">Documentos\Giz na Tela\capturas</span>.
+    <b>Mandar ao Giz Livre</b> transforma a tela num quadro novo do Giz Livre (abre o Giz se estiver fechado); depois a
+    tinta sai da tela (<kbd>Ctrl</kbd>+<kbd>Z</kbd> traz de volta) e a barra recolhe.</p>
+  <h2>Fechar</h2>
+  <p>O X vermelho fecha o Giz na Tela. Se houver desenho na tela, o primeiro toque só avisa; toque de novo em até 3
+    segundos para fechar (os desenhos se perdem: salve antes, se quiser guardar).</p>
+</section>
+
+<section id="atalhos">
+  <p>Valem com a barra ou a tela em modo <b>Escrevendo</b>. <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd> vale de qualquer
+    programa.</p>
+  <table id="tabAtalhos"></table>
+</section>
+
+<section id="mesa">
+  <h2>Pressão da caneta</h2>
+  <p>O traço engrossa com a força da caneta quando a mesa entrega a pressão pelo <b>Windows Ink</b>. Se o traço sai
+    sempre igual, abra o painel de ajustes da mesa digitalizadora (o programa do fabricante, no Menu Iniciar), procure a
+    opção <b>Usar Windows Ink</b> (em geral na parte de mapeamento da caneta) e ligue-a. Depois feche e abra o Giz na
+    Tela de novo.</p>
+  <p class="dica">Testado no Windows 11 com mesa digitalizadora de caneta: com "Usar Windows Ink" ligado a pressão
+    funciona; sem ele a mesa chega como mouse e o traço sai uniforme. Enquanto nenhuma caneta com pressão aparecer, o
+    Giz na Tela lembra disso no primeiro traço (no máximo três vezes).</p>
+  <h2>Botões da caneta</h2>
+  <p>O botão de apagar da caneta (quando a mesa o envia como borracha) apaga, como a ferramenta Borracha.</p>
+</section>
+
+<section id="agentes">
+  <p>Um agente de IA no computador (um assistente compatível com MCP) pode ver a tela e anotar, pelos mesmos comandos
+    dos botões. Tudo fica neste computador: a conexão é local, com uma senha guardada só na sua pasta.</p>
+  <div class="niveis" id="niveis">
+    <label><input type="radio" name="nivel" value="desligado"> <b>Desligado</b>
+      <small>Nenhum programa usa o Giz na Tela por fora.</small></label>
+    <label><input type="radio" name="nivel" value="ler"> <b>Só ler</b>
+      <small>O agente vê o estado e um retrato da tela com as anotações; não desenha nem muda nada.</small></label>
+    <label><input type="radio" name="nivel" value="agir"> <b>Agir</b>
+      <small>O agente também escreve, desenha, aponta e congela a tela. Cada ação aparece com o aviso "Agente: ..." e
+        sai com um <kbd>Ctrl</kbd>+<kbd>Z</kbd>.</small></label>
+  </div>
+  <div id="agMsg" aria-live="polite"></div>
+  <h2>Ligar ao agente</h2>
+  <p>Na configuração de servidores MCP do seu assistente, acrescente:</p>
+  <pre id="mcpConfig"></pre>
+  <button class="btn" id="copiar">Copiar</button>
+  <p class="aviso">Desligar e ligar de novo troca a senha: os agentes antigos param de funcionar.</p>
+</section>
+
+<section id="sobre">
+  <dl>
+    <dt>Autor</dt><dd>© 2026 Heraldo Antunes</dd>
+    <dt>Licença</dt><dd>Software livre, licença MIT: uso, cópia, modificação e distribuição gratuitos, mantendo o aviso de
+      licença.</dd>
+    <dt>Privacidade</dt><dd>Funciona sem internet. Nada sai do computador: não há conta, anúncio nem coleta de dados. As
+      imagens salvas ficam em <span data-info="capturas"></span>; os ajustes, em <span data-info="dados"></span>.</dd>
+    <dt>Como foi feito</dt><dd>Com apoio de assistentes de programação de inteligência artificial, usados como
+      ferramenta: a concepção, as decisões, a revisão e os testes são do autor. O código é todo próprio; ideias de
+      recursos vieram do uso de outros anotadores de tela em sala de aula.</dd>
+    <dt>Componentes</dt><dd>Tauri (MIT ou Apache 2.0) com o WebView2 do Windows; xcap (Apache 2.0) para o retrato da
+      tela; serde, serde_json e base64 (MIT ou Apache 2.0); e as bibliotecas de que eles dependem, com as licenças na
+      pasta do programa (THIRD-PARTY-NOTICES).</dd>
+    <dt>Giz Livre</dt><dd>O Giz na Tela é irmão do Giz Livre, a lousa digital livre do mesmo autor, e manda a tela para
+      ele como quadro novo.</dd>
+  </dl>
+  <p class="aviso">Fornecido "no estado em que se encontra", sem garantia de qualquer tipo. As marcas citadas pertencem
+    aos seus donos; o Giz na Tela é um projeto independente, sem vínculo com elas.</p>
+</section>
+</main>
+<script src="comandos.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button, section').forEach(e => e.classList.remove('ativo'));
+  b.classList.add('ativo'); $(b.dataset.aba).classList.add('ativo');
+});
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// a tabela de atalhos sai do registro de comandos: a ajuda nunca fica diferente do que as teclas fazem
+const { ATALHOS, POR_NOME, NOME_FERRAMENTA, CORES } = window.GizTela;
+const nomeTecla = k => k.split('+').map(p => `<kbd>${esc({ escape: 'Esc', f1: 'F1', ctrl: 'Ctrl' }[p] || p.toUpperCase())}</kbd>`).join('+');
+function oQueFaz(nome, a) {
+  if (nome === 'ferramenta.escolher') return NOME_FERRAMENTA[a.ferramenta];
+  if (nome === 'cor.escolher') return 'Cor: ' + CORES.find(c => c[0] === a.cor)[1].toLowerCase();
+  if (nome === 'espessura.escolher') return 'Traço ' + { fina: 'fino', media: 'médio', grossa: 'grosso' }[a.espessura];
+  return { 'tela.ampliar': a.modo === 'mais' ? 'Ampliar mais' : a.modo === 'menos' ? 'Ampliar menos' : 'Ampliar (liga e desliga)',
+    'tela.congelar': 'Congelar a tela', 'quadro.alternar': 'Quadro (branco, negro, tela)', 'forma.preencher': 'Preenchimento',
+    'tinta.some': 'Tinta que some', 'tela.fixar': 'Escrevendo / Mouse livre', 'barra.recolher': 'Recolher a barra',
+    'modo.voltar_um_passo': 'Voltar um passo (nunca fecha)', 'ajuda.abrir': 'Esta ajuda', 'desenho.desfazer': 'Desfazer',
+    'desenho.refazer': 'Refazer', 'captura.salvar': 'Salvar como imagem', 'captura.mandar_ao_giz': 'Mandar ao Giz Livre' }[nome]
+    || POR_NOME[nome].descricao;
+}
+$('tabAtalhos').innerHTML = Object.entries(ATALHOS).filter(([k]) => k !== '=')
+  .map(([k, [nome, a]]) => `<tr><td>${nomeTecla(k)}</td><td>${esc(oQueFaz(nome, a))}</td></tr>`).join('') +
+  `<tr><td>${nomeTecla('ctrl+alt+f')}</td><td>Voltar a escrever de qualquer programa</td></tr>`;
+
+const ponte = window.ponte;
+function mostrar(i) {
+  $('versao').textContent = 'versão ' + i.versao;
+  document.querySelectorAll('[data-info]').forEach(e => { e.textContent = i[e.dataset.info] || e.textContent; });
+  document.querySelectorAll('input[name=nivel]').forEach(r => { r.checked = r.value === i.agentes; });
+  $('mcpConfig').textContent = JSON.stringify({ mcpServers: { 'giz-na-tela': { command: i.exe, args: ['--mcp'] } } }, null, 2);
+}
+if (ponte) ponte.info().then(mostrar);
+document.querySelectorAll('input[name=nivel]').forEach(r => r.onchange = async () => {
+  try {
+    mostrar(await ponte.agentes(r.value));
+    $('agMsg').textContent = { desligado: 'Agentes desligados.', ler: 'Agentes podem só ler.', agir: 'Agentes podem agir.' }[r.value];
+  } catch (e) { $('agMsg').textContent = 'Não deu para mudar: ' + e; }
+});
+$('copiar').onclick = async () => {
+  try { await navigator.clipboard.writeText($('mcpConfig').textContent); $('agMsg').textContent = 'Copiado.'; }
+  catch { getSelection().selectAllChildren($('mcpConfig')); $('agMsg').textContent = 'Selecionado: use Ctrl+C.'; }
+};
+document.addEventListener('keydown', e => { if (e.key === 'Escape') window.__TAURI__?.window.getCurrentWindow().close(); });
+</script>
+</body>
+</html>

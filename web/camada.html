@@ -1,0 +1,452 @@
+<!doctype html>
+<!-- Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE). Camada transparente onde a tinta fica -->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  #palco { position: fixed; inset: 0; transform-origin: 0 0; }
+  #c { position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; touch-action: none; }
+  #congelado { position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; display: none; }
+  /* sem nada desenhado o fundo precisa ser quase invisível mas "pegar" a caneta: alfa 1/255 */
+  body.escrevendo { background: rgba(0, 0, 0, 0.004); }
+  #escrita { position: absolute; min-width: 40px; padding: 0 2px; outline: 1.5px dashed rgba(30,111,217,.8);
+             outline-offset: 3px; white-space: pre; font-family: "Segoe UI", sans-serif; font-weight: 600;
+             line-height: 1.2; background: rgba(255,255,255,.01); caret-color: currentColor; }
+  #fundo { position: absolute; left: 0; top: 0; width: 100vw; height: 100vh; display: none; }
+  #lupa { position: fixed; width: 240px; height: 240px; border-radius: 50%; pointer-events: none; display: none;
+          box-shadow: 0 0 0 3px #fff, 0 0 0 4px #333, 0 8px 22px rgba(0,0,0,.45); background: #fff; }
+  #aviso { position: fixed; left: 50%; bottom: 48px; transform: translateX(-50%); max-width: 70vw; display: none;
+           font: 15px "Segoe UI", sans-serif; color: #fff; background: rgba(32,33,36,.92); padding: 10px 16px;
+           border-radius: 10px; pointer-events: none; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+  #luz { position: fixed; inset: 0; pointer-events: none; display: none; }
+</style>
+</head>
+<body class="escrevendo">
+<div id="palco"><img id="congelado" alt=""><div id="fundo"></div><canvas id="c"></canvas></div>
+<div id="luz"></div>
+<canvas id="lupa"></canvas>
+<div id="aviso"></div>
+<script>
+// Desenho com pressão por PointerEvents. A camada só desenha: quem decide é a barra (registro de comandos), que chama
+// as funções de window.camada pelo host e recebe de volta o estado daqui.
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const S = { cor: '#e53935', largura: 4, ferramenta: 'caneta', borracha: false, tracos: [], atual: null,
+            passado: [], futuro: [], some: false, preencher: 'nada', raioLuz: 160, aumento: 2.5 };
+// desfazer e refazer guardam a lista inteira antes de cada mudança (os itens nunca mudam depois de prontos)
+function guardar() { S.passado.push(S.tracos); if (S.passado.length > 300) S.passado.shift(); S.futuro = []; }
+function acrescentar(t) {
+  guardar();
+  if (S.some && !t.borracha) t.ate = performance.now() + SOME_MS;
+  S.tracos = [...S.tracos, t];
+  if (t.ate) animarSumico();
+  avisarBarra();
+}
+// tinta que some: fica inteira por 2,3 s e se apaga em 0,7 s
+const SOME_MS = 3000, APAGAR_MS = 700;
+const alfa = t => (t.ate ? Math.min(1, Math.max(0, (t.ate - performance.now()) / APAGAR_MS)) : 1);
+const vivos = lista => lista.filter(t => !t.ate || t.ate > performance.now());
+let sumindo = false;
+function animarSumico() {
+  if (sumindo) return;
+  sumindo = true;
+  const passo = () => {
+    const agora = performance.now();
+    if (!S.tracos.some(t => t.ate)) { sumindo = false; return; }
+    if (S.tracos.some(t => t.ate && t.ate - agora < APAGAR_MS)) {
+      const antes = S.tracos.length;
+      S.tracos = vivos(S.tracos);
+      if (S.tracos.length !== antes) avisarBarra();
+      redesenhar();
+      if (S.atual) { desenharTraco(S.atual); if (S.atual.pts) S.atual.feitos = S.atual.pts.length; }
+    }
+    requestAnimationFrame(passo);
+  };
+  requestAnimationFrame(passo);
+}
+// ampliar: o palco (retrato congelado, quadro e tinta) recebe escala e deslocamento; a tinta guarda coordenadas
+// da tela sem ampliação, então continua no lugar certo quando a ampliação volta a 1
+const V = { z: 1, ox: 0, oy: 0 }, palco = document.getElementById('palco');
+const W = e => ({ x: (e.clientX - V.ox) / V.z, y: (e.clientY - V.oy) / V.z });
+function ampliarEm(sx, sy, z) {   // o ponto (sx, sy) da tela fica parado enquanto a escala muda
+  z = Math.min(6, Math.max(1, z));
+  const wx = (sx - V.ox) / V.z, wy = (sy - V.oy) / V.z;
+  V.z = z; V.ox = Math.min(0, Math.max(innerWidth * (1 - z), sx - wx * z));
+  V.oy = Math.min(0, Math.max(innerHeight * (1 - z), sy - wy * z));
+  palco.style.transform = `translate(${V.ox}px, ${V.oy}px) scale(${V.z})`;
+}
+function ajustar() {
+  const r = devicePixelRatio || 1;
+  cv.width = innerWidth * r; cv.height = innerHeight * r; ctx.setTransform(r, 0, 0, r, 0, 0); redesenhar();
+}
+addEventListener('resize', ajustar);
+function largura(p, t) { return t.borracha ? 28 : t.largura * (0.35 + 1.3 * (p.p || 0.5)); }
+// letra grande o bastante para ler do fundo da sala; espessura fina/média/grossa = 22/30/46 px
+const tamTexto = largura => 14 + largura * 4;
+const raioNumero = largura => 10 + largura * 2;
+function claro(cor) {
+  const n = parseInt(cor.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b > 170;
+}
+function desenharTexto(t) {
+  ctx.save(); ctx.font = `600 ${t.tam}px "Segoe UI", sans-serif`; ctx.textBaseline = 'top';
+  // contorno leve na cor oposta: o texto continua legível sobre qualquer coisa que esteja embaixo
+  ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(2, t.tam / 9);
+  ctx.strokeStyle = claro(t.cor) ? 'rgba(0,0,0,.55)' : 'rgba(255,255,255,.7)'; ctx.fillStyle = t.cor;
+  t.texto.split('\n').forEach((linha, i) => {
+    const y = t.y + i * t.tam * 1.2;
+    ctx.strokeText(linha, t.x, y); ctx.fillText(linha, t.x, y);
+  });
+  ctx.restore();
+}
+function desenharNumero(t) {
+  ctx.save(); ctx.fillStyle = t.cor; ctx.strokeStyle = claro(t.cor) ? '#333' : '#fff'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(t.x, t.y, t.raio, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = claro(t.cor) ? '#111' : '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `700 ${Math.round(t.raio * (t.n > 9 ? 1.05 : 1.25))}px "Segoe UI", sans-serif`;
+  ctx.fillText(String(t.n), t.x, t.y + t.raio * 0.06);
+  ctx.restore();
+}
+// visto e X de correção, carimbados com um toque
+const tamMarca = largura => 24 + largura * 6;
+function desenharCorrecao(t) {
+  const s = t.tam;
+  ctx.save(); ctx.strokeStyle = t.cor; ctx.lineWidth = Math.max(3, s * 0.16); ctx.lineCap = ctx.lineJoin = 'round';
+  ctx.beginPath();
+  if (t.correcao === 'visto') { ctx.moveTo(t.x - s * 0.45, t.y); ctx.lineTo(t.x - s * 0.12, t.y + s * 0.35); ctx.lineTo(t.x + s * 0.5, t.y - s * 0.4); }
+  else { ctx.moveTo(t.x - s * 0.38, t.y - s * 0.38); ctx.lineTo(t.x + s * 0.38, t.y + s * 0.38); ctx.moveTo(t.x + s * 0.38, t.y - s * 0.38); ctx.lineTo(t.x - s * 0.38, t.y + s * 0.38); }
+  ctx.stroke(); ctx.restore();
+}
+function desenharTraco(t) {
+  if (t.forma) { desenharForma(t); return; }
+  if (t.correcao) { desenharCorrecao(t); return; }
+  if (t.texto !== undefined) { desenharTexto(t); return; }
+  if (t.n) { desenharNumero(t); return; }
+  if (t.marca) {   // marca-texto: um caminho só, translúcido, para as emendas não escurecerem
+    ctx.save(); ctx.globalAlpha *= 0.35; ctx.strokeStyle = t.cor; ctx.lineWidth = t.largura * 4;
+    ctx.lineCap = ctx.lineJoin = 'round'; ctx.beginPath();
+    t.pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); ctx.restore(); return;
+  }
+  ctx.globalCompositeOperation = t.borracha ? 'destination-out' : 'source-over';
+  ctx.strokeStyle = t.cor; ctx.lineCap = ctx.lineJoin = 'round';
+  for (let i = 1; i < t.pts.length; i++) {
+    const a = t.pts[i - 1], b = t.pts[i];
+    ctx.lineWidth = largura(b, t); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+// formas: arrastar da ponta inicial até a final; Shift prende a reta em 15 graus e a caixa em quadrado
+const FORMAS = new Set(['reta', 'seta', 'retangulo', 'elipse']);
+function pontaFinal(a, e, forma) {
+  const { x, y } = W(e);
+  if (!e.shiftKey) return { x, y };
+  const dx = x - a.x, dy = y - a.y;
+  if (forma === 'reta' || forma === 'seta') {
+    const ang = Math.round(Math.atan2(dy, dx) / (Math.PI / 12)) * (Math.PI / 12), r = Math.hypot(dx, dy);
+    return { x: a.x + r * Math.cos(ang), y: a.y + r * Math.sin(ang) };
+  }
+  const lado = Math.max(Math.abs(dx), Math.abs(dy));
+  return { x: a.x + Math.sign(dx || 1) * lado, y: a.y + Math.sign(dy || 1) * lado };
+}
+function desenharForma(t) {
+  const { a, b } = t;
+  ctx.save(); ctx.strokeStyle = ctx.fillStyle = t.cor; ctx.lineWidth = t.largura; ctx.lineCap = ctx.lineJoin = 'round';
+  ctx.beginPath();
+  if (t.forma === 'retangulo') ctx.rect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y));
+  else if (t.forma === 'elipse') ctx.ellipse((a.x + b.x) / 2, (a.y + b.y) / 2, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2, 0, 0, 2 * Math.PI);
+  if (t.forma === 'retangulo' || t.forma === 'elipse') {
+    if (t.preencher === 'cheio' || t.preencher === 'translucido') {
+      // cheio tapa o que está embaixo (ex.: a resposta); translúcido só destaca
+      const g = ctx.globalAlpha; if (t.preencher === 'translucido') ctx.globalAlpha = g * 0.3;
+      ctx.fill(); ctx.globalAlpha = g;
+    }
+  }
+  else {
+    const ang = Math.atan2(b.y - a.y, b.x - a.x), cab = Math.max(12, t.largura * 3.5);
+    // a haste para antes da ponta, para a ponta da seta não ficar arredondada pelo traço grosso
+    const fim = t.forma === 'seta' ? { x: b.x - Math.cos(ang) * cab * 0.8, y: b.y - Math.sin(ang) * cab * 0.8 } : b;
+    ctx.moveTo(a.x, a.y); ctx.lineTo(fim.x, fim.y);
+    if (t.forma === 'seta') {
+      ctx.stroke(); ctx.beginPath(); ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x - cab * Math.cos(ang - 0.45), b.y - cab * Math.sin(ang - 0.45));
+      ctx.lineTo(b.x - cab * Math.cos(ang + 0.45), b.y - cab * Math.sin(ang + 0.45));
+      ctx.closePath(); ctx.fill(); ctx.restore(); return;
+    }
+  }
+  ctx.stroke(); ctx.restore();
+}
+// o ponteiro do mouse e da caneta: caneta na cor escolhida (ponta embaixo à esquerda), marca-texto e borracha
+function cursorSvg(svg, x, y) { return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${x} ${y}, crosshair`; }
+function atualizarCursor() {
+  const f = S.ferramenta, c = S.cor;
+  let cur;
+  if (f === 'texto') cur = 'text';
+  else if (f === 'ampliar') cur = 'zoom-in';
+  else if (f === 'lupa') cur = 'none';
+  else if (f === 'holofote') cur = 'crosshair';
+  else if (f === 'visto' || f === 'xis') {
+    const d = f === 'visto' ? 'M4 14l6 7L24 6' : 'M6 6l16 16M22 6L6 22';
+    cur = cursorSvg(`<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28"><path d="${d}" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${c}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`, 14, 14);
+  }
+  else if (f === 'numero') cur = cursorSvg(`<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28"><circle cx="14" cy="14" r="12" fill="${c}" stroke="${claro(c) ? '#333' : '#fff'}" stroke-width="2"/><text x="14" y="19" text-anchor="middle" font-family="Segoe UI" font-weight="700" font-size="14" fill="${claro(c) ? '#111' : '#fff'}">${proximoNumero()}</text></svg>`, 14, 14);
+  else if (f === 'borracha') cur = cursorSvg('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="14" fill="rgba(255,255,255,.35)" stroke="#333" stroke-width="1.5"/><circle cx="16" cy="16" r="13" fill="none" stroke="#fff" stroke-width=".8"/></svg>', 16, 16);
+  else if (f === 'marca') cur = cursorSvg(`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><path d="M2 30l3-9 6 6z" fill="${c}" stroke="#222" stroke-width="1" stroke-linejoin="round"/><path d="M5 21L21 5l6 6-16 16z" fill="#fff" stroke="#222" stroke-width="1.4" stroke-linejoin="round"/><path d="M21 5l3-3 6 6-3 3z" fill="${c}" stroke="#222" stroke-width="1.4" stroke-linejoin="round"/></svg>`, 2, 30);
+  else cur = cursorSvg(`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><path d="M2 30l2-7 5 5z" fill="${c}" stroke="#222" stroke-width="1" stroke-linejoin="round"/><path d="M4 23L22 5l5 5L9 28z" fill="#fff" stroke="#222" stroke-width="1.4" stroke-linejoin="round"/><path d="M22 5l3-3 5 5-3 3z" fill="${c}" stroke="#222" stroke-width="1.4" stroke-linejoin="round"/>${FORMAS.has(f) ? '<path d="M24 20v8M20 24h8" stroke="#222" stroke-width="1.6"/>' : ''}</svg>`, 2, 30);
+  cv.style.cursor = cur;
+}
+function redesenhar() {
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  for (const t of S.tracos) { const a = alfa(t); if (a <= 0) continue; ctx.globalAlpha = a; desenharTraco(t); }
+  ctx.globalAlpha = 1;
+}
+// holofote: escurece tudo em volta do ponteiro; a roda do mouse muda o tamanho da luz
+const luz = document.getElementById('luz');
+function moverLuz(x, y) {
+  const r = S.raioLuz;
+  luz.style.background = `radial-gradient(circle at ${x}px ${y}px, transparent ${r - 2}px, rgba(0,0,0,.72) ${r + 2}px)`;
+}
+cv.addEventListener('wheel', e => {
+  const mais = e.deltaY < 0;
+  if (S.ferramenta === 'holofote') { S.raioLuz = Math.min(450, Math.max(60, S.raioLuz + (mais ? 20 : -20))); moverLuz(e.clientX, e.clientY); }
+  else if (S.ferramenta === 'lupa') { S.aumento = Math.min(6, Math.max(1.5, S.aumento * (mais ? 1.2 : 1 / 1.2))); moverLupa(e.clientX, e.clientY); }
+  else if (congelado.style.display === 'block') ampliarEm(e.clientX, e.clientY, V.z * (mais ? 1.25 : 0.8));
+}, { passive: true });
+// congelar: a camada mostra um retrato da tela feito sem o anotador; os programas de baixo continuam andando
+const congelado = document.getElementById('congelado');
+let congeladoSozinho = false;   // congelado pela lupa ou pelo ampliar: descongela quando eles terminam
+async function congelar(sim, sozinho = false) {
+  if (sim && congelado.style.display !== 'block') {
+    try {
+      congelado.src = await window.ponte.congelar();
+      await congelado.decode();
+    } catch (e) { console.error(e); camada.aviso('Não consegui retratar a tela. Tente de novo.'); avisarBarra(); return false; }
+    congelado.style.display = 'block'; congeladoSozinho = sozinho;
+  } else if (!sim) {
+    congelado.style.display = 'none'; congelado.removeAttribute('src'); congeladoSozinho = false;
+    ampliarEm(0, 0, 1);
+  }
+  avisarBarra(); return true;
+}
+// o que a barra precisa saber daqui (acender Congelar e Ampliar, armar o X de Fim, responder estado.ler)
+function estado() {
+  return { congelado: congelado.style.display === 'block', ampliado: V.z > 1 || S.ferramenta === 'ampliar',
+    tracos: S.tracos.length, desfazer: S.passado.length > 0, refazer: S.futuro.length > 0,
+    largura: innerWidth, altura: innerHeight };
+}
+function avisarBarra() { window.ponte?.estadoCamada(estado()); }
+// lupa: círculo que acompanha o ponteiro e mostra, aumentado, o retrato congelado com a tinta por cima
+const lupa = document.getElementById('lupa'), lctx = lupa.getContext('2d');
+function moverLupa(sx, sy) {
+  if (congelado.style.display !== 'block') return;
+  const r = devicePixelRatio || 1, L = 240;
+  if (lupa.width !== L * r) { lupa.width = lupa.height = L * r; }
+  lupa.style.display = 'block'; lupa.style.left = sx - L / 2 + 'px'; lupa.style.top = sy - L / 2 + 'px';
+  const mx = (sx - V.ox) / V.z, my = (sy - V.oy) / V.z, meio = L / 2 / (V.z * S.aumento), lado = 2 * meio;
+  const k = congelado.naturalWidth / innerWidth, fundo = document.getElementById('fundo');
+  lctx.save(); lctx.clearRect(0, 0, lupa.width, lupa.height);
+  lctx.beginPath(); lctx.arc(lupa.width / 2, lupa.height / 2, lupa.width / 2, 0, 2 * Math.PI); lctx.clip();
+  lctx.imageSmoothingQuality = 'high';
+  if (fundo.style.display === 'block') { lctx.fillStyle = fundo.style.background; lctx.fillRect(0, 0, lupa.width, lupa.height); }
+  else lctx.drawImage(congelado, (mx - meio) * k, (my - meio) * k, lado * k, lado * k, 0, 0, lupa.width, lupa.height);
+  lctx.drawImage(cv, (mx - meio) * r, (my - meio) * r, lado * r, lado * r, 0, 0, lupa.width, lupa.height);
+  lctx.restore();
+}
+cv.addEventListener('pointerleave', () => { lupa.style.display = 'none'; });
+let pendente = false;
+function pedirQuadro() {
+  if (pendente) return;
+  pendente = true;
+  requestAnimationFrame(() => {
+    pendente = false;
+    if (S.atual && (S.atual.marca || S.atual.forma)) { redesenhar(); desenharTraco(S.atual); }
+    else if (S.atual) {   // desenha todos os pontos que chegaram desde o último quadro, não só o último pedaço
+      const t = S.atual, n = t.pts.length, de = Math.max(0, (t.feitos || 1) - 1);
+      if (n > 1) desenharTraco({ ...t, pts: t.pts.slice(de) });
+      t.feitos = n;
+    }
+  });
+}
+// Mesa digitalizadora sem o Windows Ink chega como mouse e sem pressão: o traço sai uniforme. Enquanto nunca chegou
+// uma caneta de verdade, o primeiro traço com o mouse lembra onde ligar (no máximo algumas vezes, decide o host).
+let dicaInk = !!window.CONFIG?.dica_ink;
+function conferirEntrada(e) {
+  if (e.pointerType === 'pen') { if (!window.CONFIG?.caneta_vista) { window.CONFIG.caneta_vista = true; window.ponte?.canetaVista(); } dicaInk = false; }
+  else if (e.pointerType === 'mouse' && dicaInk) {
+    dicaInk = false; window.ponte?.dicaInk();
+    setTimeout(() => camada.aviso('Usando mesa digitalizadora e o traço não varia com a força? Ligue "Usar Windows Ink" ' +
+      'no painel de ajustes da mesa (mais em Ajuda, tecla F1).'), 600);
+  }
+}
+cv.addEventListener('pointerdown', e => {
+  conferirEntrada(e);
+  if (S.ferramenta === 'holofote') { moverLuz(e.clientX, e.clientY); return; }
+  if (S.ferramenta === 'lupa') { moverLupa(e.clientX, e.clientY); return; }
+  if (S.ferramenta === 'ampliar') {   // o toque escolhe o ponto; depois volta a ferramenta de antes, para escrever
+    ampliarEm(e.clientX, e.clientY, Math.max(2, V.z)); S.ferramenta = S.antesDeAmpliar || 'caneta'; atualizarCursor(); avisarBarra(); return;
+  }
+  const w = W(e);
+  if (S.ferramenta === 'texto' && e.button !== 5) { e.preventDefault(); terminarEscrita(); abrirEscrita(w.x, w.y); return; }
+  terminarEscrita();
+  if (S.ferramenta === 'numero' && e.button !== 5) {
+    acrescentar({ n: proximoNumero(), x: w.x, y: w.y, raio: raioNumero(S.largura), cor: S.cor });
+    redesenhar(); atualizarCursor(); return;
+  }
+  if ((S.ferramenta === 'visto' || S.ferramenta === 'xis') && e.button !== 5) {
+    acrescentar({ correcao: S.ferramenta, x: w.x, y: w.y, tam: tamMarca(S.largura), cor: S.cor });
+    redesenhar(); return;
+  }
+  cv.setPointerCapture(e.pointerId);
+  if (FORMAS.has(S.ferramenta) && e.button !== 5) {
+    const a = w;
+    S.atual = { forma: S.ferramenta, cor: S.cor, largura: S.largura, a, b: a, preencher: S.preencher };
+    return;
+  }
+  S.atual = { cor: S.cor, largura: S.largura, marca: S.ferramenta === 'marca', borracha: S.ferramenta === 'borracha' || e.button === 5, pts: [{ ...w, p: e.pressure }] };
+});
+cv.addEventListener('pointermove', e => {
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  if (S.ferramenta === 'holofote') { moverLuz(e.clientX, e.clientY); return; }
+  if (S.ferramenta === 'lupa') { moverLupa(e.clientX, e.clientY); return; }
+  if (!S.atual) return;
+  if (S.atual.forma) { S.atual.b = pontaFinal(S.atual.a, e, S.atual.forma); pedirQuadro(); return; }
+  for (const c of evs) S.atual.pts.push({ ...W(c), p: c.pressure });
+  pedirQuadro();
+});
+function fimTraco() {
+  const t = S.atual;
+  S.atual = null;
+  // forma de um toque só (sem arrastar) não fica na tela
+  if (t && !(t.forma && Math.hypot(t.b.x - t.a.x, t.b.y - t.a.y) < 4)) { delete t.feitos; acrescentar(t); }
+  redesenhar();
+}
+cv.addEventListener('pointerup', fimTraco); cv.addEventListener('pointercancel', fimTraco);
+// numeração: continua do maior número na tela; desfazer e limpar fazem a contagem voltar junto
+function proximoNumero() { return S.tracos.reduce((m, t) => Math.max(m, t.n || 0), 0) + 1; }
+// texto: caixa editável no ponto clicado; Enter termina, Shift+Enter quebra a linha, Esc desiste
+let escrita = null;
+function abrirEscrita(x, y) {
+  const tam = tamTexto(S.largura), el = document.createElement('div');
+  el.id = 'escrita'; el.contentEditable = 'plaintext-only';
+  Object.assign(el.style, { left: x + 'px', top: y - tam * 0.6 + 'px', fontSize: tam + 'px', color: S.cor });
+  palco.append(el);
+  escrita = { el, x, y: y - tam * 0.6, tam, cor: S.cor };
+  el.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); terminarEscrita(); }
+    if (e.key === 'Escape') { e.preventDefault(); terminarEscrita(true); }
+  });
+  setTimeout(() => el.focus(), 0);
+}
+function terminarEscrita(desistir = false) {
+  if (!escrita) return;
+  const { el, x, y, tam, cor } = escrita, texto = el.innerText.replace(/\n$/, '');
+  escrita = null; el.remove();
+  if (!desistir && texto.trim()) { acrescentar({ texto, x: x + 2, y, tam, cor }); redesenhar(); }
+}
+// chamadas da barra (pelo host): cada uma devolve o estado daqui, para a barra acender os botões certos
+const ESPESSURA = { fina: 2, media: 4, grossa: 8 };
+// itens que chegam prontos (comandos texto.escrever, forma.desenhar, desenho.adicionar...), já validados pela barra
+function itemDeFora(it, numero) {
+  const cor = it.cor || S.cor, larg = it.espessura ? ESPESSURA[it.espessura] : S.largura;
+  switch (it.tipo) {
+    case 'texto': return { texto: it.texto, x: it.x, y: it.y, tam: it.tamanho || tamTexto(larg), cor };
+    case 'numero': return { n: it.numero ?? numero, x: it.x, y: it.y, raio: raioNumero(larg), cor };
+    case 'correcao': return { correcao: it.marca, x: it.x, y: it.y, tam: tamMarca(larg), cor };
+    case 'forma': return { forma: it.forma, cor, largura: larg, a: { x: it.x1, y: it.y1 }, b: { x: it.x2, y: it.y2 },
+      preencher: it.preencher || S.preencher };
+    case 'traco': return { cor, largura: larg, marca: !!it.marca, borracha: false,
+      pts: it.pontos.map(([x, y, p]) => ({ x, y, p })) };
+  }
+  throw new Error('item desconhecido: ' + it.tipo);
+}
+window.camada = {
+  estado,
+  cor(c) {
+    S.cor = c; if (S.ferramenta === 'borracha') S.ferramenta = 'caneta';
+    if (escrita) { escrita.cor = c; escrita.el.style.color = c; escrita.el.focus(); }
+    atualizarCursor(); return estado();
+  },
+  async ferramenta(f) {
+    terminarEscrita();
+    const antes = S.ferramenta;
+    S.ferramenta = f; atualizarCursor();
+    luz.style.display = f === 'holofote' ? 'block' : 'none';
+    if (f === 'holofote') moverLuz(innerWidth / 2, innerHeight / 2);
+    if (f !== 'lupa') lupa.style.display = 'none';
+    if (f === 'lupa') await congelar(true, true);   // a lupa trabalha sobre um retrato da tela
+    else if (antes === 'lupa' && congeladoSozinho && V.z === 1) await congelar(false);
+    return estado();
+  },
+  async congelar(sim) {
+    if (!(await congelar(!!sim))) throw new Error('não consegui retratar a tela');
+    return estado();
+  },
+  // ampliar: true espera o toque no ponto; false volta ao normal; '+' e '-' mudam o aumento no meio da tela
+  async ampliar(v) {
+    if (v === false) {
+      if (S.ferramenta === 'ampliar') S.ferramenta = S.antesDeAmpliar || 'caneta';
+      ampliarEm(0, 0, 1); atualizarCursor();
+      if (congeladoSozinho) await congelar(false);
+      return estado();
+    }
+    if (!(await congelar(true, congelado.style.display !== 'block'))) throw new Error('não consegui retratar a tela');
+    if (v === '+' || v === '-') { ampliarEm(innerWidth / 2, innerHeight / 2, V.z * (v === '+' ? 1.25 : 0.8)); return estado(); }
+    if (S.ferramenta !== 'ampliar') S.antesDeAmpliar = S.ferramenta;
+    S.ferramenta = 'ampliar'; atualizarCursor();
+    return estado();
+  },
+  aviso(msg) {
+    const a = document.getElementById('aviso');
+    a.textContent = msg; a.style.display = 'block';
+    clearTimeout(a.tempo); a.tempo = setTimeout(() => { a.style.display = 'none'; }, 6000);
+    return estado();
+  },
+  espessura(n) { S.largura = n; atualizarCursor(); return estado(); },
+  desfazer() {
+    terminarEscrita(true);
+    if (S.passado.length) { S.futuro.push(S.tracos); S.tracos = vivos(S.passado.pop()); redesenhar(); atualizarCursor(); }
+    return estado();
+  },
+  refazer() {
+    if (S.futuro.length) { S.passado.push(S.tracos); S.tracos = vivos(S.futuro.pop()); redesenhar(); atualizarCursor(); }
+    return estado();
+  },
+  limpar() { terminarEscrita(true); if (S.tracos.length) guardar(); S.tracos = []; redesenhar(); atualizarCursor(); return estado(); },
+  // quadro: 'branco' ou 'negro' cobre a tela com um fundo liso; 'tela' volta a mostrar os programas
+  quadro(q) {
+    const f = document.getElementById('fundo'), liso = q === 'branco' || q === 'negro';
+    f.style.display = liso ? 'block' : 'none'; f.style.background = q === 'negro' ? '#1d2b24' : '#ffffff';
+    return estado();
+  },
+  some(sim) { S.some = !!sim; return estado(); },
+  preencher(p) { S.preencher = ['translucido', 'cheio'].includes(p) ? p : 'nada'; return estado(); },
+  escrevendo(sim) { document.body.classList.toggle('escrevendo', sim); return estado(); },
+  // vários itens de uma vez entram como um passo só do Desfazer (é assim que o pedido de um agente se desfaz)
+  adicionar(lista) {
+    terminarEscrita();
+    let numero = proximoNumero();
+    const novos = lista.map(it => {
+      const t = itemDeFora(it, numero);
+      if (t.n) numero = Math.max(numero, t.n + 1);
+      return t;
+    });
+    if (novos.length) {
+      guardar();
+      const ate = S.some ? performance.now() + SOME_MS : 0;
+      S.tracos = [...S.tracos, ...novos.map(t => (ate ? { ...t, ate } : t))];
+      if (ate) animarSumico();
+      redesenhar(); atualizarCursor();
+    }
+    return estado();
+  },
+};
+// teclas: a barra guarda o estado dos botões, então os atalhos vão para ela (pelo host)
+document.addEventListener('keydown', e => {
+  if (e.altKey || ['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
+  e.preventDefault();
+  window.ponte?.tecla((e.ctrlKey ? 'ctrl+' : '') + e.key);
+});
+ajustar(); atualizarCursor(); avisarBarra();
+</script>
+</body>
+</html>

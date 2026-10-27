@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE). Slide de exemplo para as fotos do README -->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Plano inclinado</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #f4f6f8; font-family: "Segoe UI", sans-serif; color: #1f2a37; }
+  .slide { position: absolute; inset: 4vh 5vw; background: #fff; border-radius: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.08);
+           padding: 4vh 4vw; box-sizing: border-box; }
+  h1 { margin: 0 0 1vh; font-size: 5vh; color: #1f6b45; }
+  .sub { font-size: 2.4vh; color: #5f6670; margin-bottom: 3vh; }
+  .grade { display: grid; grid-template-columns: 1.1fr 1fr; gap: 3vw; align-items: center; }
+  ul { font-size: 3vh; line-height: 1.7; margin: 0; padding-left: 1.2em; }
+  svg { width: 100%; height: auto; }
+  .rodape { position: absolute; left: 4vw; bottom: 3vh; font-size: 2vh; color: #8a929c; }
+</style>
+</head>
+<body>
+<div class="slide">
+  <h1>Plano inclinado sem atrito</h1>
+  <div class="sub">Física 1 · Leis de Newton · Aula 7</div>
+  <div class="grade">
+    <ul>
+      <li>Peso: P = m · g</li>
+      <li>Componente paralela: P<sub>x</sub> = P · sen θ</li>
+      <li>Componente normal: P<sub>y</sub> = P · cos θ</li>
+      <li>Normal: N = P<sub>y</sub></li>
+      <li>Aceleração: a = g · sen θ</li>
+    </ul>
+    <svg viewBox="0 0 520 340" aria-label="Bloco sobre um plano inclinado">
+      <polygon points="30,310 490,310 490,70" fill="#e8f1fd" stroke="#1e3a5f" stroke-width="3"/>
+      <path d="M95,310 A65,65 0 0 0 92,288" fill="none" stroke="#1e3a5f" stroke-width="2"/>
+      <text x="108" y="300" font-size="22" fill="#1e3a5f">θ</text>
+      <g transform="translate(300,200) rotate(-27.6)">
+        <rect x="-45" y="-62" width="90" height="62" fill="#ffd8a8" stroke="#8a4b08" stroke-width="3"/>
+        <text x="0" y="-22" text-anchor="middle" font-size="24" fill="#8a4b08">m</text>
+      </g>
+      <line x1="285" y1="172" x2="285" y2="290" stroke="#c62828" stroke-width="4"/>
+      <polygon points="285,300 277,284 293,284" fill="#c62828"/>
+      <text x="294" y="292" font-size="22" fill="#c62828">P</text>
+    </svg>
+  </div>
+  <div class="rodape">Exemplo para as fotos do Giz na Tela</div>
+</div>
+</body>
+</html>

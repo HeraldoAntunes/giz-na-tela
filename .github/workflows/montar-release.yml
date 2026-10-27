@@ -1,0 +1,57 @@
+# Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE).
+# Monta o programa, o instalador e o zip portátil a partir do código público, nos computadores do GitHub (não no PC
+# do mantenedor): qualquer pessoa pode conferir de onde saiu cada arquivo. Só roda pelo botão "Run workflow",
+# informando a tag ou o branch. Não publica nada: os arquivos ficam como artefato do workflow por 14 dias.
+name: Montar release
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag ou branch a montar (ex.: v1.0.0 ou main)"
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: montar-${{ inputs.ref }}
+
+jobs:
+  montar:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Inno Setup 6.7.3 (a mesma versão do build local), do site oficial, com o SHA-256 conferido
+        shell: pwsh
+        run: |
+          # o Chocolatey não tem a 6.7.3; o hash é o publicado na release is-6_7_3 do jrsoftware/issrc
+          $url = 'https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe'
+          $exe = Join-Path $env:RUNNER_TEMP 'innosetup-6.7.3.exe'
+          Invoke-WebRequest $url -OutFile $exe
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne '9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732') { throw "SHA-256 do Inno Setup não confere: $hash" }
+          Start-Process $exe -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/ALLUSERS' -Wait
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { throw 'Inno Setup não foi instalado' }
+
+      - name: Montar o programa, o instalador e o zip portátil (com os testes)
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File installer\build.ps1
+
+      - name: Guardar os arquivos montados
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: giz-na-tela-${{ github.run_number }}
+          path: dist/*
+          retention-days: 14
+          if-no-files-found: error

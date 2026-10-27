@@ -1,0 +1,394 @@
+<!doctype html>
+<!-- Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE). Barra de ferramentas do anotador -->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<style>
+  :root { --fundo: #ffffff; --borda: #e3e6ea; --texto: #2b2f36; --suave: #6b7280; --realce: #1e6fd9;
+          --realce-fundo: #e8f1fd; --fixar: #f5b400; --fim: #d93025; }
+  html, body { margin: 0; background: transparent; font: 11px "Segoe UI", sans-serif; color: var(--texto);
+               user-select: none; overflow: hidden; }
+  .painel { width: 112px; margin: 8px auto; padding: 6px 0 8px; background: var(--fundo); border: 1px solid var(--borda);
+            border-radius: 16px; box-shadow: 0 4px 14px rgba(0,0,0,.18); display: flex; flex-direction: column;
+            align-items: center; gap: 4px; }
+  .alca { width: 100%; height: 16px; display: grid; place-items: center; cursor: grab; }
+  .alca svg { pointer-events: none; }
+  .sep { width: 84px; height: 1px; background: var(--borda); margin: 3px 0; }
+  .grade { display: grid; grid-template-columns: repeat(3, 30px); gap: 4px; }
+  .bt { width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; color: var(--texto);
+        display: grid; place-items: center; cursor: pointer; padding: 0; }
+  .bt:hover { background: #f1f3f5; }
+  .bt.ativo { background: var(--realce-fundo); color: var(--realce); box-shadow: inset 0 0 0 2px var(--realce); }
+  .bt svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round;
+            stroke-linejoin: round; }
+  /* o botão de modo diz em palavras o modo de AGORA: azul escrevendo, amarelo com o mouse livre */
+  .bt.fixar { width: 98px; height: 36px; grid-template-columns: 18px auto; gap: 5px; justify-content: center;
+              background: var(--realce-fundo); color: var(--realce); box-shadow: inset 0 0 0 2px var(--realce); }
+  .bt.fixar span { font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .bt.fixar.ligado { background: var(--fixar); color: #3d2c00; box-shadow: none; }
+  .bt.fixar .ic-mouse, .bt.fixar.ligado .ic-caneta { display: none; }
+  .bt.fixar.ligado .ic-mouse { display: block; }
+  .alca { position: relative; }
+  .recolher { position: absolute; right: 8px; top: -2px; width: 20px; height: 20px; border: 0; border-radius: 6px;
+              background: none; color: var(--suave); cursor: pointer; padding: 0; display: grid; place-items: center; }
+  .recolher:hover { background: #f1f3f5; color: var(--texto); }
+  .recolher svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+  /* recolhida: só o giz verde, pequeno; um clique abre a barra de novo */
+  #abrir { display: none; width: 44px; height: 44px; margin: 6px; border: 0; border-radius: 50%; cursor: pointer; padding: 0;
+           background: #1f6b45; box-shadow: 0 3px 10px rgba(0,0,0,.3); place-items: center; }
+  #abrir svg { width: 26px; height: 26px; }
+  body.recolhido .painel { display: none; }
+  body.recolhido #abrir { display: grid; }
+  .bt.fim { color: var(--fim); }
+  .bt.fim:hover { background: #fdecea; }
+  /* X de Fim com desenho na tela: o primeiro toque arma, o segundo (em 3 s) fecha */
+  .bt.fim.armado, .bt.fim.armado:hover { background: var(--fim); color: #fff; }
+  .ajuda { position: absolute; left: 8px; top: -2px; width: 20px; height: 20px; border: 0; border-radius: 6px;
+           background: none; color: var(--suave); cursor: pointer; padding: 0; font: 700 12px "Segoe UI", sans-serif; }
+  .ajuda:hover { background: #f1f3f5; color: var(--texto); }
+  .bt.opc.ligado { background: var(--realce-fundo); color: var(--realce); }
+  .bt.quadro.branco { background: #ffffff; box-shadow: inset 0 0 0 2px var(--realce); color: var(--realce); }
+  .bt.quadro.negro { background: #1d2b24; color: #ffffff; }
+  .cor { width: 24px; height: 24px; margin: 3px; border-radius: 50%; border: 1px solid rgba(0,0,0,.18); cursor: pointer; padding: 0; }
+  .cor.ativo { box-shadow: 0 0 0 2px var(--fundo), 0 0 0 4px var(--realce); }
+  .ponto { background: currentColor; border-radius: 50%; }
+  .ponto.fino { width: 5px; height: 5px; } .ponto.medio { width: 9px; height: 9px; } .ponto.grosso { width: 14px; height: 14px; }
+  /* cores e tamanhos ficam aqui, não em style="" no HTML: a política de segurança (CSP) do programa bloqueia estilo
+     escrito direto nos elementos */
+  .cor[data-args*="#e53935"] { background: #e53935; }
+  .cor[data-args*="#1e6fd9"] { background: #1e6fd9; }
+  .cor[data-args*="#2e9d4a"] { background: #2e9d4a; }
+  .cor[data-args*="#f9c80e"] { background: #f9c80e; }
+  .cor[data-args*="#111111"] { background: #111111; }
+  .cor[data-args*="#ffffff"] { background: #ffffff; }
+  .ocupado { opacity: .5; pointer-events: none; }
+  body.fixado .desenho { opacity: .45; }
+</style>
+</head>
+<body>
+<div class="painel">
+  <div class="alca" data-tauri-drag-region title="Arraste para mover a barra">
+    <button class="ajuda" id="ajuda" data-cmd="ajuda.abrir" title="Ajuda e ajustes (F1)">?</button>
+    <button class="recolher" id="recolher" data-cmd="barra.recolher" data-args='{"recolhida":true}' title="Recolher a barra (O): vira um botão pequeno; o mouse fica livre e a tinta continua na tela">
+      <svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
+    </button>
+    <svg width="20" height="8" viewBox="0 0 20 8"><g fill="#9aa1ab"><circle cx="4" cy="2" r="1.4"/><circle cx="10" cy="2" r="1.4"/><circle cx="16" cy="2" r="1.4"/><circle cx="4" cy="6" r="1.4"/><circle cx="10" cy="6" r="1.4"/><circle cx="16" cy="6" r="1.4"/></g></svg>
+  </div>
+
+  <button class="bt fixar" id="fixar" data-cmd="tela.fixar" title="Escrevendo. Toque (ou F) para soltar o mouse para os outros programas; a tinta fica na tela">
+    <svg class="ic-caneta" viewBox="0 0 24 24"><path d="M4 20l1.2-4.6L16.5 4.1a2 2 0 0 1 2.8 0l.6.6a2 2 0 0 1 0 2.8L8.6 18.8z"/></svg>
+    <svg class="ic-mouse" viewBox="0 0 24 24"><path d="M5 3l13 7.5-5.5 1.5L10 18z"/></svg><span id="rotFixar">Escrevendo</span>
+  </button>
+  <div class="sep"></div>
+
+  <div class="desenho grade">
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"caneta"}' title="Caneta (C)">
+      <svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.6L16.5 4.1a2 2 0 0 1 2.8 0l.6.6a2 2 0 0 1 0 2.8L8.6 18.8z"/><path d="M14.5 6l3.5 3.5"/></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"marca"}' title="Marca-texto (M)">
+      <svg viewBox="0 0 24 24"><path d="M9 15l-3 3v2h4l2-2"/><path d="M9 15l8-8 3 3-8 8z"/><path d="M4 21h16" opacity=".5"/></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"borracha"}' title="Borracha (B)">
+      <svg viewBox="0 0 24 24"><path d="M7 20h13"/><path d="M4.5 15.5l9-9a2 2 0 0 1 2.8 0l2.2 2.2a2 2 0 0 1 0 2.8L11 19H8z"/><path d="M9.5 10.5l4.5 4.5"/></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"reta"}' title="Reta (L; Shift: de 15 em 15 graus)">
+      <svg viewBox="0 0 24 24"><path d="M5 19L19 5"/></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"seta"}' title="Seta (S; Shift: de 15 em 15 graus)">
+      <svg viewBox="0 0 24 24"><path d="M5 19L19 5"/><path d="M10 5h9v9"/></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"retangulo"}' title="Retângulo (R; Shift: quadrado)">
+      <svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"elipse"}' title="Elipse (E; Shift: círculo)">
+      <svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8.5" ry="6.5"/></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"texto"}' title="Texto (T): toque onde escrever; Enter termina, Shift+Enter muda de linha">
+      <svg viewBox="0 0 24 24"><path d="M5 6V4h14v2"/><path d="M12 4v16"/><path d="M9 20h6"/></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"numero"}' title="Numeração (N): cada toque põe o próximo número (1, 2, 3...)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10.5 9l2-1.5V16.5"/></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"visto"}' title="Visto (V): cada toque carimba um ✓">
+      <svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6"/></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"xis"}' title="X (X): cada toque carimba um X">
+      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"holofote"}' title="Holofote (H): escurece tudo em volta do ponteiro (a roda do mouse muda o tamanho)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"lupa"}' title="Lupa (U): aumenta o que está em volta do ponteiro (a roda do mouse muda o aumento)">
+      <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/><path d="M8 10.5h5M10.5 8v5"/></svg>
+    </button>
+    <button class="bt opc" id="ampliar" data-cmd="tela.ampliar" title="Ampliar (A): toque no ponto da tela para aumentar 2 vezes e escrever em cima; a roda do mouse ou + e − mudam o aumento">
+      <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><path d="M9 12h6M12 9v6"/></svg>
+    </button>
+    <button class="bt opc" id="congelar" data-cmd="tela.congelar" title="Congelar (G): a tela fica parada (vídeo, apresentação) enquanto você explica">
+      <svg viewBox="0 0 24 24"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/><path d="M9.5 4.5L12 7l2.5-2.5M9.5 19.5L12 17l2.5 2.5"/></svg>
+    </button>
+  </div>
+  <div class="sep"></div>
+
+  <div class="grade">
+    <button class="bt quadro" id="quadro" data-cmd="quadro.alternar" title="Quadro (Q): cobre a tela com fundo branco (outro toque: negro; outro: volta à tela)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="1"/><path d="M8 21l4-4 4 4"/></svg>
+    </button>
+    <button class="bt opc" id="preencher" data-cmd="forma.preencher" title="Preenchimento do retângulo e da elipse (P): só contorno">
+      <svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1" id="icPreencher" fill="none"/></svg>
+    </button>
+    <button class="bt opc" id="some" data-cmd="tinta.some" title="Tinta que some sozinha em 3 segundos (D), para apontar sem sujar a tela">
+      <svg viewBox="0 0 24 24"><path d="M4 17c3-6 5-6 7-2s4 4 6-3" stroke-dasharray="2.5 2.5"/><circle cx="19" cy="6" r="2.5"/></svg>
+    </button>
+  </div>
+  <div class="sep"></div>
+
+  <div class="desenho grade">
+    <button class="cor" data-cmd="cor.escolher" data-args='{"cor":"#e53935"}' title="Vermelho (1)"></button>
+    <button class="cor" data-cmd="cor.escolher" data-args='{"cor":"#1e6fd9"}' title="Azul (2)"></button>
+    <button class="cor" data-cmd="cor.escolher" data-args='{"cor":"#2e9d4a"}' title="Verde (3)"></button>
+    <button class="cor" data-cmd="cor.escolher" data-args='{"cor":"#f9c80e"}' title="Amarelo (4)"></button>
+    <button class="cor" data-cmd="cor.escolher" data-args='{"cor":"#111111"}' title="Preto (5)"></button>
+    <button class="cor" data-cmd="cor.escolher" data-args='{"cor":"#ffffff"}' title="Branco (6)"></button>
+    <button class="bt tm" data-cmd="espessura.escolher" data-args='{"espessura":"fina"}' title="Traço fino (7)"><span class="ponto fino"></span></button>
+    <button class="bt tm" data-cmd="espessura.escolher" data-args='{"espessura":"media"}' title="Traço médio (8)"><span class="ponto medio"></span></button>
+    <button class="bt tm" data-cmd="espessura.escolher" data-args='{"espessura":"grossa"}' title="Traço grosso (9)"><span class="ponto grosso"></span></button>
+  </div>
+  <div class="sep"></div>
+
+  <div class="grade">
+    <button class="bt" id="desfazer" data-cmd="desenho.desfazer" title="Desfazer (Ctrl+Z)">
+      <svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+    </button>
+    <button class="bt" id="refazer" data-cmd="desenho.refazer" title="Refazer (Ctrl+Y)">
+      <svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>
+    </button>
+    <button class="bt" id="limpar" data-cmd="desenho.limpar" title="Limpar tudo (dá para desfazer)">
+      <svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg>
+    </button>
+    <button class="bt" id="salvar" data-cmd="captura.salvar" title="Salvar a tela com a tinta como imagem (Ctrl+S), em Documentos\Giz Livre\capturas">
+      <svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="5"/></svg>
+    </button>
+    <button class="bt" id="giz" data-cmd="captura.mandar_ao_giz" title="Mandar para o Giz Livre (Ctrl+G): a tela com a tinta vira um quadro novo na galeria">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1"/><path d="M12 19v-7M9 15l3-3 3 3"/></svg>
+    </button>
+    <button class="bt fim" id="fim" title="Fechar o anotador (os desenhos se perdem)">
+      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+</div>
+<button id="abrir" title="Toque para abrir a barra (volta a escrever); arraste para mudar de lugar">
+  <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5" fill="none" stroke="#fff" stroke-width="1.8"/>
+    <path d="M7 12.5c2-2.5 4-3 6-1.5s3 .5 4-1.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+    <path d="M9 20h6M12 16v4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+</button>
+<script src="comandos.js"></script>
+<script>
+// A barra guarda o estado e executa os comandos do registro (comandos.js). Botão, atalho, Esc, Ctrl+Alt+F e pedido de
+// fora (API e MCP) entram por executar(); a camada só desenha e devolve o estado dela depois de cada pedido.
+const { POR_NOME, ATALHOS, ESPESSURAS, COMANDOS, validar } = window.GizTela;
+const ponte = window.ponte, $ = id => document.getElementById(id);
+const S = { ferramenta: 'caneta', cor: '#e53935', espessura: 'media', quadro: 'tela', preencher: 'nada', some: false,
+  fixado: false, recolhido: false, congelado: false, ampliado: false, tracos: 0, desfazer: false, refazer: false,
+  largura: 0, altura: 0 };
+const QUADROS = ['tela', 'branco', 'negro'], PREENCHER = ['nada', 'translucido', 'cheio'];
+const proximo = (lista, atual) => lista[(lista.indexOf(atual) + 1) % lista.length];
+async function camada(nome, valor) {
+  const e = await ponte.camada(nome, valor ?? null);
+  if (e && typeof e === 'object') Object.assign(S, e);
+  render();   // quem pediu recebe o estado público (estadoPublico), não o interno da camada
+}
+const aviso = msg => ponte.camada('aviso', msg);
+window.estadoCamada = e => { Object.assign(S, e); render(); };   // traço feito à mão, tinta que sumiu etc.
+
+async function fixar(sim) {
+  if (sim === S.fixado) return;
+  S.fixado = await ponte.fixar(sim);
+  if (!sim && S.recolhido) { S.recolhido = false; render(); await ponte.recolher(false); }  // voltou a escrever: abre a barra
+  render();
+}
+// recolher: a barra vira o botão do giz e solta o mouse; abrir de novo volta a escrever
+async function recolher(sim) {
+  if (sim === S.recolhido) return;
+  S.recolhido = sim; render();
+  await ponte.recolher(sim);
+  await fixar(sim);
+}
+// escolher algo de desenho pelo botão ou atalho é querer desenhar; o agente não mexe no modo do professor
+async function voltarAEscrever(ctx) { if (ctx.origem !== 'agente' && S.fixado) await fixar(false); }
+
+let fimArmado = 0;
+const EXEC = {
+  'ferramenta.escolher': async p => { S.ferramenta = p.ferramenta; await camada('ferramenta', p.ferramenta); },
+  'cor.escolher': async p => {
+    S.cor = p.cor; if (S.ferramenta === 'borracha') S.ferramenta = 'caneta';
+    await camada('cor', p.cor);
+  },
+  'espessura.escolher': async p => { S.espessura = p.espessura; await camada('espessura', ESPESSURAS[p.espessura]); },
+  'desenho.desfazer': () => camada('desfazer'),
+  'desenho.refazer': () => camada('refazer'),
+  'desenho.limpar': () => camada('limpar'),
+  'quadro.alternar': async p => { S.quadro = p.quadro ?? proximo(QUADROS, S.quadro); await camada('quadro', S.quadro); },
+  'forma.preencher': async p => { S.preencher = p.modo ?? proximo(PREENCHER, S.preencher); await camada('preencher', S.preencher); },
+  'tinta.some': async p => { S.some = p.ligado ?? !S.some; await camada('some', S.some); },
+  'tela.congelar': p => camada('congelar', p.ligado ?? !S.congelado),
+  'tela.ampliar': p => {
+    const modo = p.modo ?? (S.ampliado ? 'desligar' : 'ligar');
+    return camada('ampliar', { ligar: true, desligar: false, mais: '+', menos: '-' }[modo]);
+  },
+  'tela.fixar': async (p, ctx) => {
+    await fixar(p.ligado ?? !S.fixado);
+    if (ctx.origem !== 'agente') aviso(S.fixado ? 'Mouse livre: o clique vai para os outros programas e a tinta fica na ' +
+      'tela. Para voltar a escrever: botão da barra ou Ctrl+Alt+F' : 'Escrevendo');
+  },
+  'barra.recolher': p => recolher(p.recolhida ?? !S.recolhido),
+  'captura.salvar': () => ponte.salvar(false),
+  'captura.mandar_ao_giz': async () => {
+    const r = await ponte.salvar(true);
+    // o Giz abriu atrás do anotador: a tinta já está no quadro, sai da tela (dá para desfazer) e a barra recolhe
+    if (r.giz) { await camada('limpar'); await recolher(true); }
+    return r;
+  },
+  'captura.ler': p => ponte.capturar(p.largura_max ?? 1280),
+  'texto.escrever': p => camada('adicionar', [{ tipo: 'texto', ...p }]),
+  'numero.carimbar': p => camada('adicionar', [{ tipo: 'numero', ...p }]),
+  'correcao.carimbar': p => camada('adicionar', [{ tipo: 'correcao', ...p }]),
+  'forma.desenhar': p => camada('adicionar', [{ tipo: 'forma', ...p }]),
+  'traco.desenhar': p => camada('adicionar', [{ tipo: 'traco', ...p }]),
+  'desenho.adicionar': p => camada('adicionar', p.itens),
+  'estado.ler': () => estadoPublico(),
+  'comandos.listar': () => listarComandos(),
+  // Esc nunca fecha (perderia os desenhos): desfaz um passo de cada vez, do mais "por cima" ao mais simples
+  'modo.voltar_um_passo': async (p, ctx) => {
+    if (S.ampliado) return EXEC['tela.ampliar']({ modo: 'desligar' }, ctx);
+    if (S.congelado) return EXEC['tela.congelar']({ ligado: false }, ctx);
+    if (S.quadro !== 'tela') return EXEC['quadro.alternar']({ quadro: 'tela' }, ctx);
+    if (S.ferramenta !== 'caneta') return EXEC['ferramenta.escolher']({ ferramenta: 'caneta' }, ctx);
+    if (!S.fixado) return EXEC['tela.fixar']({ ligado: true }, ctx);
+  },
+  'ajuda.abrir': () => ponte.ajuda(),
+  'programa.fechar': async (p, ctx) => {
+    if (S.tracos && !p.confirmar) {
+      if (ctx.origem === 'agente') throw new Error('há desenho na tela; para fechar mesmo assim (os desenhos se perdem), mande confirmar: true');
+      fimArmado = Date.now(); render(); setTimeout(render, 3100);
+      aviso('Há desenho na tela. Para fechar e apagar tudo, toque no X de novo');
+      return { fechou: false, aguardando_confirmacao: true };
+    }
+    await ponte.fim();
+    return { fechou: true };
+  },
+};
+
+function estadoPublico() {
+  return { versao: window.CONFIG?.versao, modo: S.fixado ? 'mouse livre' : 'escrevendo', ferramenta: S.ferramenta,
+    cor: S.cor, espessura: S.espessura, quadro: S.quadro, preencher: S.preencher, tinta_some: S.some,
+    barra_recolhida: S.recolhido, congelado: S.congelado, ampliado: S.ampliado, desenhos: S.tracos,
+    pode_desfazer: S.desfazer, pode_refazer: S.refazer, tela: { largura: S.largura, altura: S.altura } };
+}
+const argsDe = b => JSON.parse(b.dataset.args || '{}');
+// a lista de fora traz também os botões e os atalhos, e o que estiver fora do registro (o teste exige lista vazia)
+function listarComandos() {
+  const problemas = [];
+  for (const c of COMANDOS) if (!EXEC[c.nome]) problemas.push(`sem execução: ${c.nome}`);
+  for (const n of Object.keys(EXEC)) if (!POR_NOME[n]) problemas.push(`fora do registro: ${n}`);
+  const confere = (onde, nome, args) => { try { validar(nome, args); } catch (e) { problemas.push(`${onde}: ${e.message}`); } };
+  const botoes = [...document.querySelectorAll('[data-cmd]')].map(b => {
+    confere(`botão ${b.id || b.title}`, b.dataset.cmd, argsDe(b));
+    return { comando: b.dataset.cmd, parametros: argsDe(b), dica: b.title };
+  });
+  botoes.push({ comando: 'programa.fechar', parametros: {}, dica: $('fim').title });
+  for (const [k, [nome, args]] of Object.entries(ATALHOS)) confere(`atalho ${k}`, nome, args);
+  return { comandos: COMANDOS.map(window.GizTela.descrever), atalhos: ATALHOS, atalho_global: window.GizTela.ATALHO_GLOBAL,
+    botoes, problemas };
+}
+
+// um comando por vez, na ordem em que chegaram (clique e agente ao mesmo tempo não se atropelam)
+let fila = Promise.resolve();
+const NIVEIS = { ler: 1, agir: 2 };
+function executar(nome, args, origem = 'botao', nivel = 'agir') {
+  const r = fila.then(async () => {
+    const c = POR_NOME[nome];
+    if (!c) throw new Error(`comando desconhecido: ${nome} (veja comandos.listar)`);
+    if (origem === 'agente' && NIVEIS[c.nivel] > (NIVEIS[nivel] || 0))
+      throw new Error(`${nome} precisa do nível "agir"; o professor deixou os agentes em "só ler" (Ajuda e ajustes)`);
+    const p = validar(nome, args), ctx = { origem };
+    if (c.volta_a_escrever) await voltarAEscrever(ctx);
+    const valor = await EXEC[nome](p, ctx);
+    render();
+    if (origem === 'agente' && c.aviso) aviso(`Agente: ${c.aviso(p)}${c.desfaz ? '. Ctrl+Z desfaz' : ''}`);
+    return valor ?? estadoPublico();
+  });
+  fila = r.catch(() => {});
+  return r;
+}
+// pedido da API local (o host já conferiu o token e diz o nível que o professor liberou)
+window.executarDeFora = (nome, args, nivel) => executar(nome, args, 'agente', nivel);
+window.tecla = k => {
+  const a = ATALHOS[String(k).toLowerCase()];
+  if (a) executar(a[0], a[1], 'atalho').catch(e => aviso(e.message));
+};
+
+function render() {
+  const marca = (sel, f) => document.querySelectorAll(sel).forEach(b => b.classList.toggle('ativo', f(argsDe(b))));
+  marca('[data-cmd="ferramenta.escolher"]', a => a.ferramenta === S.ferramenta);
+  marca('[data-cmd="cor.escolher"]', a => a.cor === S.cor);
+  marca('[data-cmd="espessura.escolher"]', a => a.espessura === S.espessura);
+  document.body.classList.toggle('fixado', S.fixado);
+  document.body.classList.toggle('recolhido', S.recolhido);
+  $('fixar').classList.toggle('ligado', S.fixado);
+  $('rotFixar').textContent = S.fixado ? 'Mouse livre' : 'Escrevendo';
+  $('fixar').title = S.fixado ? 'Mouse livre: o clique vai para os outros programas e a tinta fica na tela. Toque aqui (ou Ctrl+Alt+F de qualquer programa) para voltar a escrever'
+                              : 'Escrevendo. Toque (ou F) para soltar o mouse para os outros programas; a tinta fica na tela';
+  const q = $('quadro');
+  q.classList.toggle('branco', S.quadro === 'branco'); q.classList.toggle('negro', S.quadro === 'negro');
+  q.title = { tela: 'Quadro (Q): cobre a tela com fundo branco', branco: 'Quadro branco ligado (Q: negro)',
+              negro: 'Quadro negro ligado (Q: volta à tela)' }[S.quadro];
+  const [fill, op, nome] = { nada: ['none', 1, 'só contorno'], translucido: ['currentColor', 0.3, 'translúcido (destaca)'],
+                             cheio: ['currentColor', 1, 'cheio (tapa o que está embaixo)'] }[S.preencher];
+  $('icPreencher').setAttribute('fill', fill); $('icPreencher').setAttribute('fill-opacity', op);
+  $('preencher').classList.toggle('ligado', S.preencher !== 'nada');
+  $('preencher').title = 'Preenchimento do retângulo e da elipse (P): ' + nome;
+  $('some').classList.toggle('ligado', S.some);
+  $('congelar').classList.toggle('ligado', S.congelado);
+  $('ampliar').classList.toggle('ligado', S.ampliado);
+  const armado = Date.now() - fimArmado < 3000;
+  $('fim').classList.toggle('armado', armado);
+  $('fim').title = armado ? 'Toque de novo para fechar e apagar os desenhos' : 'Fechar o anotador (os desenhos se perdem)';
+}
+
+document.querySelectorAll('[data-cmd]').forEach(b => b.addEventListener('click', async () => {
+  if (b.classList.contains('ocupado')) return;
+  const lento = b.dataset.cmd.startsWith('captura.');   // retratar e mandar ao Giz demoram: o botão espera
+  if (lento) b.classList.add('ocupado');
+  try { await executar(b.dataset.cmd, argsDe(b), 'botao'); }
+  catch (e) { aviso(e.message); }
+  finally { b.classList.remove('ocupado'); }
+}));
+$('fim').onclick = () => executar('programa.fechar', Date.now() - fimArmado < 3000 ? { confirmar: true } : {}, 'botao')
+  .catch(e => aviso(e.message));
+// o botão recolhido também se arrasta: toque abre; arrastar (mais de 4 px) move, sem abrir
+let toque = null;
+$('abrir').onpointerdown = e => { toque = { x: e.screenX, y: e.screenY, arrastou: false }; };
+$('abrir').onpointermove = e => {
+  if (!toque || toque.arrastou || !e.buttons || Math.hypot(e.screenX - toque.x, e.screenY - toque.y) < 4) return;
+  toque.arrastou = true;
+  window.__TAURI__?.window.getCurrentWindow().startDragging();
+};
+$('abrir').onclick = () => {
+  if (!toque?.arrastou) executar('barra.recolher', { recolhida: false }, 'botao').catch(e => aviso(e.message));
+  toque = null;
+};
+document.addEventListener('keydown', e => {
+  if (e.altKey) return;
+  const k = (e.ctrlKey ? 'ctrl+' : '') + e.key.toLowerCase();
+  if (!ATALHOS[k]) return;
+  e.preventDefault(); window.tecla(k);
+});
+// abriu recolhida (como o professor deixou da última vez): botão pequeno e mouse livre
+if (window.CONFIG?.recolhida) { S.recolhido = true; fixar(true); }
+render();
+// a camada pode ter terminado de abrir antes desta página e o primeiro aviso dela se perdeu: pede de novo
+camada('estado').catch(() => {});
+</script>
+</body>
+</html>

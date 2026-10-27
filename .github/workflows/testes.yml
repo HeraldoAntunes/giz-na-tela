@@ -1,0 +1,42 @@
+# Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE).
+# Testes automáticos a cada envio ao GitHub: compila o programa, confere versão e textos e roda o teste de ponta a
+# ponta (cada comando pela API local, segurança, níveis dos agentes e MCP) num Windows do GitHub.
+name: Testes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Versão, cabeçalhos e nenhum nome de outro programa
+        run: python tests/testar_versao.py
+
+      - name: Compilar (sem avisos)
+        shell: pwsh
+        run: |
+          $env:RUSTFLAGS = '-D warnings'
+          cargo build --release --locked
+
+      - name: Teste de ponta a ponta (cada comando pela API, segurança, níveis e MCP)
+        run: python tests/testar_comandos.py

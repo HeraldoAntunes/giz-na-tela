@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Ajuda dentro do programa
+    url: https://github.com/HeraldoAntunes/giz-na-tela#readme
+    about: No Giz na Tela, tecla F1 ou o "?" da barra abre a ajuda com todos os atalhos.

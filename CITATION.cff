@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "Se usar o Giz na Tela em pesquisa ou material didático, cite-o assim."
+title: "Giz na Tela"
+abstract: "Anotador de tela livre e offline: camada transparente por cima de qualquer programa para escrever com a mesa digitalizadora, com comandos para atalhos, testes e agentes de IA."
+type: software
+authors:
+  - family-names: "Antunes"
+    given-names: "Heraldo"
+license: MIT
+version: "1.0.0"
+date-released: "2026-10-26"
+repository-code: "https://github.com/HeraldoAntunes/giz-na-tela"
+keywords:
+  - anotador de tela
+  - mesa digitalizadora
+  - ensino
+  - software livre

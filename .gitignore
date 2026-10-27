@@ -1,0 +1,18 @@
+# Giz na Tela — arquivos que não entram no Git
+target/
+gen/
+dist/
+*.log
+*.tmp
+__pycache__/
+.claude/
+.vscode/
+# segredos e certificados
+.env
+*.pfx
+*.p12
+*.pem
+*.key
+Thumbs.db
+desktop.ini
+installer/MicrosoftEdgeWebview2Setup.exe

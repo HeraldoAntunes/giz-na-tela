@@ -1,0 +1,60 @@
+name: Relatar um problema
+description: Algo não funcionou como deveria no Giz na Tela
+labels: ["problema"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por ajudar a melhorar o Giz na Tela! Problemas de **segurança** não devem ser abertos aqui: veja o SECURITY.md.
+  - type: textarea
+    id: oque
+    attributes:
+      label: O que aconteceu?
+      description: Descreva o problema e o que você esperava que acontecesse.
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passo a passo para repetir
+      placeholder: |
+        1. Abri o PowerPoint em tela cheia
+        2. Escolhi a seta e desenhei
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: versao
+    attributes:
+      label: Versão do Giz na Tela
+      description: Está na ajuda (tecla F1 ou o "?" da barra), no topo.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: sistema
+    attributes:
+      label: Sistema
+      options: [Windows 11, Windows 10, Outro]
+    validations:
+      required: true
+  - type: dropdown
+    id: entrada
+    attributes:
+      label: Com o que você estava escrevendo?
+      options: [Mesa digitalizadora sem tela, Tela com caneta, Toque com o dedo, Mouse]
+  - type: dropdown
+    id: ink
+    attributes:
+      label: '"Usar Windows Ink" está ligado no painel da mesa?'
+      options: [Sim, Não, Não sei, Não uso mesa]
+  - type: input
+    id: monitores
+    attributes:
+      label: Quantos monitores ou projetores estão ligados?
+      placeholder: "1 (só o notebook) / 2 (notebook e projetor)"
+  - type: textarea
+    id: extra
+    attributes:
+      label: Prints ou observações
+      description: Arraste imagens para cá. Cuidado para não mostrar dados pessoais de alunos.

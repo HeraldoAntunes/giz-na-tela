@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "padrao",
+  "description": "A camada, a barra e a ajuda só chamam os comandos do próprio anotador",
+  "windows": ["camada", "barra", "ajuda"],
+  "permissions": ["core:default", "core:window:allow-start-dragging", "core:window:allow-close"]
+}
