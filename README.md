@@ -3,6 +3,7 @@
 [![Testes](https://github.com/HeraldoAntunes/giz-na-tela/actions/workflows/testes.yml/badge.svg)](https://github.com/HeraldoAntunes/giz-na-tela/actions/workflows/testes.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/HeraldoAntunes/giz-na-tela/badge)](https://scorecard.dev/viewer/?uri=github.com/HeraldoAntunes/giz-na-tela)
 [![Versão](https://img.shields.io/github/v/release/HeraldoAntunes/giz-na-tela?label=vers%C3%A3o)](https://github.com/HeraldoAntunes/giz-na-tela/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/HeraldoAntunes/giz-na-tela/total?label=downloads)](https://github.com/HeraldoAntunes/giz-na-tela/releases)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23690523.svg)](https://doi.org/10.5281/zenodo.23690523)
 [![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)](LICENSE)
 [![Testado no Windows 11](https://img.shields.io/badge/testado%20no-Windows%2011-0078D6)](#requisitos)
