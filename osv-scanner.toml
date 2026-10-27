@@ -1,0 +1,15 @@
+# Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE). Avisos de bibliotecas que não entram no programa
+# Cada aviso abaixo foi conferido com `cargo tree --target x86_64-pc-windows-msvc -e normal`: nenhum entra no
+# GizNaTela.exe do Windows. Rever todos quando sair o Tauri 3 (hoje em alfa), que troca essas bibliotecas.
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0429"
+reason = "glib 0.18 vem do Tauri 2 (tauri -> muda -> gtk 0.18) e só é compilado para Linux; o programa hoje é só para Windows. Some com o Tauri 3."
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0370"
+reason = "proc-macro-error 1.0 vem de glib-macros 0.18 (parte Linux do Tauri 2) e só roda ao compilar, nunca no programa. Some com o Tauri 3."
+
+[[IgnoredVulns]]
+id = "GHSA-qwgh-2vcv-g2f7"
+reason = "block-buffer 0.10 vem de tauri-codegen -> sha2 0.10, usado só ao compilar (macros do Tauri), nunca no programa. Some com o Tauri novo."

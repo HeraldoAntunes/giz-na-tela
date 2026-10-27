@@ -1,4 +1,4 @@
-// Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE). Retrato da tela, imagem salva e envio ao Giz Livre
+// Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE). Retrato da tela (GDI), imagem salva e envio ao Giz Livre
 use crate::sistema::{self, Agora};
 use crate::Estado;
 use base64::Engine;
@@ -6,29 +6,129 @@ use serde_json::{json, Value};
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
+// Retrato com o GDI do próprio Windows (sem biblioteca de captura): só o monitor principal, que é onde o anotador fica
+#[repr(C)]
+struct Ponto { x: i32, y: i32 }
+#[repr(C)]
+struct Retangulo { esq: i32, topo: i32, dir: i32, base: i32 }
+#[repr(C)]
+struct InfoMonitor { tam: u32, monitor: Retangulo, trabalho: Retangulo, flags: u32 }
+#[repr(C)]
+struct InfoBmp { tam: u32, largura: i32, altura: i32, planos: u16, bits: u16, compressao: u32, tam_imagem: u32,
+    xppm: i32, yppm: i32, usadas: u32, importantes: u32, cores: [u32; 3] }
+
+#[link(name = "user32")]
+extern "system" {
+    fn GetDC(hwnd: isize) -> isize;
+    fn ReleaseDC(hwnd: isize, dc: isize) -> i32;
+    fn MonitorFromPoint(p: Ponto, flags: u32) -> isize;
+    fn GetMonitorInfoW(monitor: isize, info: *mut InfoMonitor) -> i32;
+}
+#[link(name = "gdi32")]
+extern "system" {
+    fn CreateCompatibleDC(dc: isize) -> isize;
+    fn CreateCompatibleBitmap(dc: isize, largura: i32, altura: i32) -> isize;
+    fn SelectObject(dc: isize, obj: isize) -> isize;
+    fn BitBlt(dest: isize, x: i32, y: i32, largura: i32, altura: i32, orig: isize, xo: i32, yo: i32, op: u32) -> i32;
+    fn GetDIBits(dc: isize, bmp: isize, inicio: u32, linhas: u32, bits: *mut u8, info: *mut InfoBmp, uso: u32) -> i32;
+    fn DeleteObject(obj: isize) -> i32;
+    fn DeleteDC(dc: isize) -> i32;
+}
+#[link(name = "shcore")]
+extern "system" {
+    fn GetDpiForMonitor(monitor: isize, tipo: u32, x: *mut u32, y: *mut u32) -> i32;
+}
+
+// imagem em RGBA, linha a linha de cima para baixo
+pub struct Imagem { pub largura: u32, pub altura: u32, pub rgba: Vec<u8> }
+
+fn retrato_gdi() -> Result<(Imagem, f32), String> {
+    unsafe {
+        let m = MonitorFromPoint(Ponto { x: 0, y: 0 }, 1);  // MONITOR_DEFAULTTOPRIMARY
+        let mut info = InfoMonitor { tam: std::mem::size_of::<InfoMonitor>() as u32,
+            monitor: Retangulo { esq: 0, topo: 0, dir: 0, base: 0 }, trabalho: Retangulo { esq: 0, topo: 0, dir: 0, base: 0 },
+            flags: 0 };
+        if m == 0 || GetMonitorInfoW(m, &mut info) == 0 {
+            return Err("monitor principal não encontrado".into());
+        }
+        let r = &info.monitor;
+        let (l, a) = (r.dir - r.esq, r.base - r.topo);
+        let (mut dpi, mut dpi_y) = (96u32, 96u32);
+        if GetDpiForMonitor(m, 0, &mut dpi, &mut dpi_y) != 0 || dpi == 0 {  // MDT_EFFECTIVE_DPI
+            dpi = 96;
+        }
+        let tela = GetDC(0);
+        if tela == 0 {
+            return Err("não consegui ler a tela".into());
+        }
+        let mem = CreateCompatibleDC(tela);
+        let bmp = CreateCompatibleBitmap(tela, l, a);
+        let antigo = SelectObject(mem, bmp);
+        let copiou = BitBlt(mem, 0, 0, l, a, tela, r.esq, r.topo, 0x00CC0020) != 0;  // SRCCOPY
+        let mut cab = InfoBmp { tam: 40, largura: l, altura: -a, planos: 1, bits: 32, compressao: 0, tam_imagem: 0,
+            xppm: 0, yppm: 0, usadas: 0, importantes: 0, cores: [0; 3] };  // altura negativa: de cima para baixo
+        let mut px = vec![0u8; l as usize * a as usize * 4];
+        SelectObject(mem, antigo);  // o GetDIBits pede o bitmap fora do DC
+        let leu = copiou && GetDIBits(mem, bmp, 0, a as u32, px.as_mut_ptr(), &mut cab, 0) == a;
+        DeleteObject(bmp);
+        DeleteDC(mem);
+        ReleaseDC(0, tela);
+        if !leu {
+            return Err("não consegui copiar a tela".into());
+        }
+        // o GDI entrega azul, verde, vermelho e um quarto byte sem uso; a tela é sempre opaca
+        for p in px.chunks_exact_mut(4) {
+            p.swap(0, 2);
+            p[3] = 255;
+        }
+        Ok((Imagem { largura: l as u32, altura: a as u32, rgba: px }, dpi as f32 / 96.0))
+    }
+}
+
 // Para retratar o que está EMBAIXO do anotador, as janelas pedidas saem da captura só durante o retrato; fora desse
 // instante continuam aparecendo em gravações e no compartilhamento de tela.
-pub fn retratar(app: &AppHandle, sem: &[&str]) -> Result<(xcap::image::RgbaImage, f32), String> {
+pub fn retratar(app: &AppHandle, sem: &[&str]) -> Result<(Imagem, f32), String> {
     let janelas: Vec<isize> = sem.iter().filter_map(|n| app.get_webview_window(n))
         .filter_map(|w| w.hwnd().ok().map(|h| h.0 as isize)).collect();
     janelas.iter().for_each(|h| sistema::fora_da_captura(*h, true));
     std::thread::sleep(Duration::from_millis(150)); // o Windows aplica a exclusão no próximo quadro da tela
-    let r = (|| -> Result<_, String> {
-        let m = xcap::Monitor::all().map_err(|e| e.to_string())?.into_iter()
-            .find(|m| m.is_primary().unwrap_or(false)).ok_or("monitor principal não encontrado")?;
-        let escala = m.scale_factor().unwrap_or(1.0);
-        Ok((m.capture_image().map_err(|e| e.to_string())?, escala))
-    })();
+    let r = retrato_gdi();
     janelas.iter().for_each(|h| sistema::fora_da_captura(*h, false));
     r
 }
 
-pub fn png(img: &xcap::image::RgbaImage) -> Result<Vec<u8>, String> {
-    use xcap::image::codecs::png::{CompressionType, FilterType, PngEncoder};
+pub fn png(img: &Imagem) -> Result<Vec<u8>, String> {
     let mut saida = Vec::new();
-    img.write_with_encoder(PngEncoder::new_with_quality(&mut saida, CompressionType::Fast, FilterType::Adaptive))
-        .map_err(|e| e.to_string())?;
+    let mut cod = ::png::Encoder::new(&mut saida, img.largura, img.altura);
+    cod.set_color(::png::ColorType::Rgba);
+    cod.set_depth(::png::BitDepth::Eight);
+    cod.set_compression(::png::Compression::Fast);
+    let mut escritor = cod.write_header().map_err(|e| e.to_string())?;
+    escritor.write_image_data(&img.rgba).map_err(|e| e.to_string())?;
+    escritor.finish().map_err(|e| e.to_string())?;
     Ok(saida)
+}
+
+// redução pela média de cada bloco de pixels: nítida o bastante para o agente ler a tela
+fn reduzir(img: &Imagem, l: u32, a: u32) -> Imagem {
+    let (lo, ao) = (img.largura as u64, img.altura as u64);
+    let mut rgba = Vec::with_capacity(l as usize * a as usize * 4);
+    for y in 0..a as u64 {
+        let (y0, y1) = (y * ao / a as u64, ((y + 1) * ao / a as u64).max(y * ao / a as u64 + 1));
+        for x in 0..l as u64 {
+            let (x0, x1) = (x * lo / l as u64, ((x + 1) * lo / l as u64).max(x * lo / l as u64 + 1));
+            let mut soma = [0u64; 4];
+            for yy in y0..y1 {
+                let linha = &img.rgba[((yy * lo + x0) * 4) as usize..((yy * lo + x1) * 4) as usize];
+                for p in linha.chunks_exact(4) {
+                    (0..4).for_each(|c| soma[c] += p[c] as u64);
+                }
+            }
+            let n = (y1 - y0) * (x1 - x0);
+            rgba.extend(soma.iter().map(|s| (s / n) as u8));
+        }
+    }
+    Imagem { largura: l, altura: a, rgba }
 }
 
 pub fn data_url(png: &[u8]) -> String {
@@ -38,12 +138,12 @@ pub fn data_url(png: &[u8]) -> String {
 // captura.ler: retrato com a tinta e sem a barra, reduzido para caber no pedido do agente
 pub fn ler(app: &AppHandle, largura_max: u32) -> Result<Value, String> {
     let (mut img, _) = retratar(app, &["barra", "ajuda"])?;
-    if img.width() > largura_max {
-        let alt = (img.height() as u64 * largura_max as u64 / img.width() as u64).max(1) as u32;
-        img = xcap::image::imageops::resize(&img, largura_max, alt, xcap::image::imageops::FilterType::Triangle);
+    if img.largura > largura_max {
+        let alt = (img.altura as u64 * largura_max as u64 / img.largura as u64).max(1) as u32;
+        img = reduzir(&img, largura_max, alt);
     }
     let dados = png(&img)?;
-    Ok(json!({ "largura": img.width(), "altura": img.height(), "png_base64":
+    Ok(json!({ "largura": img.largura, "altura": img.altura, "png_base64":
         base64::engine::general_purpose::STANDARD.encode(dados) }))
 }
 
@@ -77,7 +177,7 @@ pub fn salvar(app: &AppHandle, giz: bool) -> Result<Value, String> {
     let arquivo = arq.display().to_string();
     let mut r = json!({ "arquivo": arquivo, "giz": false, "mensagem": format!("Imagem salva em {arquivo}") });
     if giz {
-        match mandar_ao_giz(app, &dados, img.width(), img.height(), escala, &t) {
+        match mandar_ao_giz(app, &dados, img.largura, img.altura, escala, &t) {
             Ok(titulo) => {
                 r["giz"] = json!(true);
                 r["quadro"] = json!(titulo);

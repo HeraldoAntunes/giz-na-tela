@@ -2,6 +2,16 @@
 
 Numeração: só correções muda o terceiro número (1.0.0 → 1.0.1); recurso novo muda o segundo (1.0.x → 1.1.0).
 
+## [1.1.1] - 2026-10-27
+
+Sem mudança no uso.
+
+- **Retrato da tela com código próprio do Windows** (Congelar, Lupa, Ampliar, Salvar, Mandar ao Giz e o retrato pedido
+  pelos agentes): sai uma biblioteca grande de captura e, com ela, os avisos de segurança das partes dela que nem
+  entravam no programa. O programa fica menor por dentro.
+- `osv-scanner.toml` explica os três avisos que sobram: são da parte Linux do Tauri ou só de compilação e não entram
+  no programa do Windows.
+
 ## [1.1.0] - 2026-10-27
 
 - **Setas mais nítidas:** a ponta vem aberta, em V, grande o bastante para ler de longe, e a haste ficou um quarto

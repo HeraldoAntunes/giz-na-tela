@@ -1,7 +1,7 @@
 # Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE). Anotador de tela (Tauri 2 com o WebView2)
 [package]
 name = "giz-na-tela"
-version = "1.1.0"
+version = "1.1.1"
 description = "Giz na Tela: escrever por cima de qualquer programa com a mesa digitalizadora"
 authors = ["Heraldo Antunes"]
 edition = "2021"
@@ -18,7 +18,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-xcap = "0.9.8"
+png = "0.18.1"
 base64 = "0.23.1"
 tauri-plugin-global-shortcut = "2"
 

@@ -10,7 +10,7 @@ Obrigado pelo interesse! O Giz na Tela é software livre (MIT), feito para profe
      parâmetros), depois na execução da barra (`EXEC` em `web/barra.html`) e ganha um teste em
      `tests/testar_comandos.py`. O teste falha se faltar algum dos três. Botão e atalho chamam o comando; nada de
      lógica só no clique.
-  2. Sem dependências novas sem necessidade: Rust só com tauri, serde, serde_json, xcap, base64 e o atalho global;
+  2. Sem dependências novas sem necessidade: Rust só com tauri, serde, serde_json, png, base64 e o atalho global;
      JavaScript puro nas páginas; testes só com a biblioteca padrão do Python.
   3. Valor que vem de fora (API, MCP) entra no JavaScript só serializado em JSON, nunca colado como código.
   4. Antes do *pull request*, rode `cargo build --release`, `python tests/testar_versao.py` e
