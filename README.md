@@ -4,13 +4,20 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/HeraldoAntunes/giz-na-tela/badge)](https://scorecard.dev/viewer/?uri=github.com/HeraldoAntunes/giz-na-tela)
 [![Versão](https://img.shields.io/github/v/release/HeraldoAntunes/giz-na-tela?label=vers%C3%A3o)](https://github.com/HeraldoAntunes/giz-na-tela/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/HeraldoAntunes/giz-na-tela/total?label=downloads)](https://github.com/HeraldoAntunes/giz-na-tela/releases)
-[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.23690523-1682D4)](https://doi.org/10.5281/zenodo.23690523)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23690523.svg)](https://doi.org/10.5281/zenodo.23690523)
 [![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)](LICENSE)
 [![Testado no Windows 11](https://img.shields.io/badge/testado%20no-Windows%2011-0078D6)](#requisitos)
 
 **Escrever por cima de qualquer programa: slides, PDF, navegador, vídeo, simulação.** Uma camada transparente cobre a
 tela e uma barra pequena traz caneta, marca-texto, formas, texto, numeração, visto e X, holofote e lupa. Feito por um
 professor para as próprias aulas com mesa digitalizadora; funciona também com mouse e tela de toque.
+
+<p align="center">
+  <a href="https://github.com/HeraldoAntunes/giz-na-tela/releases/latest"><b>⬇ Baixar o Giz na Tela para Windows</b></a>
+  &nbsp;·&nbsp; <a href="#como-se-usa">Como se usa</a>
+  &nbsp;·&nbsp; <a href="#requisitos">Requisitos</a>
+  &nbsp;·&nbsp; <a href="#perguntas-frequentes">Perguntas frequentes</a>
+</p>
 
 <p align="center"><img src="docs/img/uso-slide.png" alt="Slide de física anotado com o Giz na Tela: título destacado com marca-texto, itens numerados, fórmula circulada com visto, seta até o bloco e texto explicativo; a barra de ferramentas fica à direita" width="860"></p>
 
@@ -95,6 +102,47 @@ A mesma aba mostra o trecho pronto para a configuração do assistente. Detalhes
 Limitação conhecida: a camada cobre só o monitor principal. Com projetor no modo "estender", escreva na tela principal
 (ou use o modo "duplicar").
 
+## Perguntas frequentes
+
+**É de graça mesmo?** Sim. É software livre (licença MIT): pode usar, copiar, instalar em quantos computadores quiser e
+distribuir.
+
+**Precisa de internet?** Não. O programa não acessa a internet sozinho. As únicas exceções: se faltar o WebView2 no
+computador, o instalador o baixa da Microsoft durante a instalação, e a versão portátil oferece abrir a página de
+download, só se você clicar em "Sim".
+
+**Funciona por cima de apresentação em tela cheia?** Funciona: a camada fica por cima de qualquer janela, inclusive
+slides, vídeo e navegador em tela cheia. Para passar o slide, troque para **Mouse livre** (ou recolha a barra); para
+voltar a escrever, **Ctrl+Alt+F** de qualquer programa.
+
+**Funciona com a minha mesa digitalizadora?** Se ela funciona no Windows com o **Windows Ink** ligado no painel da
+mesa, funciona no Giz na Tela, com pressão. Sem o Windows Ink ela desenha como mouse, com o traço sempre igual; o
+próprio programa lembra disso no primeiro traço.
+
+**E com projetor?** No modo "duplicar" funciona normalmente. No modo "estender", a camada cobre só a tela principal.
+
+**Posso perder a aula sem querer?** O **Esc** nunca fecha nem apaga: volta um passo de cada vez. O X de fechar, com
+desenho na tela, pede um segundo toque. **Ctrl+Z** desfaz, inclusive o "Limpar". Para guardar, use **Salvar** (imagem)
+ou **Mandar ao Giz Livre**.
+
+**Onde ficam as imagens e os ajustes?** As imagens salvas, em `Documentos\Giz na Tela\capturas`. Os ajustes (onde a
+barra fica, agentes de IA), em `%APPDATA%\Giz na Tela`. Na versão portátil, os ajustes ficam na pasta `dados`, ao lado
+do programa.
+
+**Como atualizo?** Baixe o instalador da versão nova e instale por cima: ele fecha o Giz na Tela, se estiver aberto, e
+mantém os ajustes e as imagens.
+
+**Os agentes de IA vêm ligados?** Não. Só funcionam se você ligar em Ajuda → Agentes de IA, e só para programas do
+próprio computador.
+
+**O antivírus reclamou. É seguro?** O programa passa pelo Microsoft Defender antes de cada publicação, e você pode
+conferir o SHA-256 e a assinatura Sigstore de cada arquivo. O aviso de "editor desconhecido" aparece porque não há
+assinatura digital paga. Veja [SECURITY.md](.github/SECURITY.md).
+
+**Posso usar na minha escola ou rede de ensino?** Pode, à vontade, mantendo o aviso de licença.
+
+**Encontrei um erro ou tenho uma ideia.** Abra uma [issue](https://github.com/HeraldoAntunes/giz-na-tela/issues/new/choose).
+
 ## Compilar a partir do código
 
 Rust (rustup) e as ferramentas de compilação C++ do Visual Studio. Na pasta do projeto:
@@ -109,16 +157,33 @@ O programa sai em `target\release\GizNaTela.exe`. O teste de comandos abre o pro
 tela por alguns segundos e confere cada comando, a segurança da API, os níveis dos agentes e o MCP. O instalador e a
 versão portátil saem de `installer\build.ps1` (Inno Setup 6).
 
-## Como foi feito
+## Privacidade
 
-Com apoio de assistentes de programação de inteligência artificial, usados como ferramenta: a concepção, as decisões,
-a revisão e os testes são do autor. O código é todo próprio; ideias de recursos vieram do uso de outros anotadores de
-tela em sala de aula. Como contribuir: [CONTRIBUTING.md](.github/CONTRIBUTING.md).
+Este programa não transfere nenhuma informação para outros sistemas em rede, a não ser quando pedido expressamente
+pelo usuário ou por quem o instala ou opera. As imagens salvas e os ajustes ficam só no computador; "Mandar ao Giz
+Livre" entrega a imagem ao Giz Livre aberto no mesmo computador. Os agentes de IA, se ligados, só aceitam programas do
+próprio computador, com senha.
+
+*This program will not transfer any information to other networked systems unless specifically requested by the user or
+the person installing or operating it.*
+
+## Contribuir
+
+Sugestões e correções são bem-vindas. Veja [CONTRIBUTING.md](.github/CONTRIBUTING.md) e a política de segurança em
+[SECURITY.md](.github/SECURITY.md).
 
 ## Como citar
 
-Antunes, H. *Giz na Tela* (software livre). Zenodo. <https://doi.org/10.5281/zenodo.23690523>. Esse DOI aponta sempre
-para a versão mais recente; o botão "Cite this repository", no alto da página do GitHub, dá a citação pronta.
+Se usar o Giz na Tela num trabalho, artigo ou material didático, cite a versão usada. Os dados estão em
+[CITATION.cff](CITATION.cff); no GitHub, o botão **Cite this repository** gera a referência pronta (APA ou BibTeX).
+Cada versão fica arquivada no Zenodo com DOI. O DOI geral, que leva sempre à versão mais recente, é
+[10.5281/zenodo.23690523](https://doi.org/10.5281/zenodo.23690523).
+
+## Como foi feito
+
+Desenvolvido por Heraldo Antunes com apoio de assistentes de programação de inteligência artificial, usados como
+ferramenta: a concepção, as decisões, a revisão e os testes são do autor, que responde pelo programa. O código é todo
+próprio; ideias de recursos vieram do uso de outros anotadores de tela em sala de aula.
 
 ## Licença
 
