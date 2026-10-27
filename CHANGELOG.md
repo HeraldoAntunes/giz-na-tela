@@ -2,6 +2,15 @@
 
 Numeração: só correções muda o terceiro número (1.0.0 → 1.0.1); recurso novo muda o segundo (1.0.x → 1.1.0).
 
+## [1.0.1] - 2026-10-27
+
+Versão pequena, sem mudança no uso.
+
+- **Ajuda → Sobre** mostra o endereço do código-fonte e das versões novas (github.com/HeraldoAntunes/giz-na-tela). O
+  programa continua sem consultar a internet sozinho.
+- Publicada também para o arquivo permanente do código no Zenodo, que dá ao Giz na Tela um identificador para
+  citação (DOI).
+
 ## [1.0.0] - 2026-10-26
 
 Primeira versão. Uma camada transparente por cima de qualquer programa, para escrever com a mesa digitalizadora, o

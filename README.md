@@ -12,12 +12,12 @@ professor para as próprias aulas com mesa digitalizadora; funciona também com 
 
 <p align="center"><img src="docs/img/uso-slide.png" alt="Slide de física anotado com o Giz na Tela: título destacado com marca-texto, itens numerados, fórmula circulada com visto, seta até o bloco e texto explicativo; a barra de ferramentas fica à direita" width="860"></p>
 
-### ⬇ Qual arquivo baixar? (versão 1.0.0)
+### ⬇ Qual arquivo baixar? (versão 1.0.1)
 
 | Para quê | Baixar |
 |---|---|
-| **Instalar no computador (Windows)** | [**Instalar-GizNaTela-1.0.0.exe**](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.0.0/Instalar-GizNaTela-1.0.0.exe) |
-| Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.0.0-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.0.0/GizNaTela-1.0.0-portatil.zip) |
+| **Instalar no computador (Windows)** | [**Instalar-GizNaTela-1.0.1.exe**](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.0.1/Instalar-GizNaTela-1.0.1.exe) |
+| Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.0.1-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.0.1/GizNaTela-1.0.1-portatil.zip) |
 
 Se o Windows avisar "o Windows protegeu o computador", clique em **Mais informações → Executar assim mesmo** (o
 programa é gratuito e não tem assinatura paga). A conferência dos arquivos fica na
