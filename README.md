@@ -36,12 +36,12 @@ digitalizadora. Livre, gratuito e sem internet.</p>
 
 ## Qual arquivo baixar?
 
-Versão de agora: **1.3.0** ([todas as versões](https://github.com/HeraldoAntunes/giz-na-tela/releases)).
+Versão de agora: **1.3.1** ([todas as versões](https://github.com/HeraldoAntunes/giz-na-tela/releases)).
 
 | Para quê | Baixar |
 |---|---|
-| **Instalar no computador (Windows)** | [**Instalar-GizNaTela-1.3.0.exe**](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.3.0/Instalar-GizNaTela-1.3.0.exe) |
-| Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.3.0-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.3.0/GizNaTela-1.3.0-portatil.zip) |
+| **Instalar no computador (Windows)** | [**Instalar-GizNaTela-1.3.1.exe**](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.3.1/Instalar-GizNaTela-1.3.1.exe) |
+| Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.3.1-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.3.1/GizNaTela-1.3.1-portatil.zip) |
 
 Se o Windows avisar "o Windows protegeu o computador", clique em **Mais informações → Executar assim mesmo** (o
 programa é gratuito e não tem assinatura paga). A conferência dos arquivos fica na
@@ -107,8 +107,8 @@ Cada ação da barra é um comando com nome, descrição e parâmetros (`web/com
 o teste automático e o agente de IA usam o mesmo caminho, então o que um faz o outro também faz.
 
 Para assistentes de IA compatíveis com MCP, o próprio programa é o servidor (`GizNaTela.exe --mcp`), falando com uma
-API local que só aceita programas do mesmo computador, com senha. **Vem desligado.** Na ajuda (aba Agentes de IA) o
-professor escolhe:
+API local que só aceita programas do mesmo computador, com um código de acesso que o programa cria. **Vem desligado.**
+Na ajuda (aba Agentes de IA) o professor escolhe:
 
 - **Só ler:** o agente vê o estado e um retrato da tela com as anotações;
 - **Agir:** o agente também escreve, desenha, aponta e congela a tela. Cada ação aparece com o aviso "Agente: ...", e
@@ -192,15 +192,13 @@ versão portátil saem de `installer\build.ps1` (Inno Setup 6).
 
 ## Privacidade
 
-Este programa não transfere nenhuma informação para outros sistemas em rede, a não ser quando pedido expressamente
-pelo usuário ou por quem o instala ou opera. A única consulta à internet é a do botão **Procurar versão nova**, na
-ajuda, e só quando você clica: ela lê a página de versões do Giz na Tela no GitHub. As imagens salvas e os ajustes
-ficam só no computador; "Mandar ao Giz
-Livre" entrega a imagem ao Giz Livre aberto no mesmo computador. Os agentes de IA, se ligados, só aceitam programas do
-próprio computador, com senha.
+O Giz na Tela não manda nada para a internet por conta própria. Ele só se conecta quando você clica em **Procurar
+versão nova**, na ajuda: aí consulta a página do programa no GitHub. Se você mandar instalar, ele baixa o instalador de
+lá e confere se o arquivo é o original antes de abrir.
 
-*This program will not transfer any information to other networked systems unless specifically requested by the user or
-the person installing or operating it.*
+As imagens e os ajustes ficam só no seu computador. "Mandar ao Giz Livre" entrega a imagem ao Giz Livre aberto no
+mesmo computador, sem passar pela internet. Os agentes de IA vêm desligados; se você ligar, só programas do próprio
+computador conseguem usar, e com um código de acesso que o Giz na Tela cria e guarda.
 
 ## Contribuir
 

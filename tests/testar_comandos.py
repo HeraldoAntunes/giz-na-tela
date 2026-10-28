@@ -662,7 +662,17 @@ def t_alt_f4(a):
     a.valor("desenho.limpar")
 
 
+def t_barra_de_tarefas(a):
+    u = ctypes.windll.user32
+    u.GetWindowLongPtrW.restype = ctypes.c_ssize_t
+    u.GetWindowLongPtrW.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    ex, estilo = u.GetWindowLongPtrW(janela("Giz na Tela"), -20), u.GetWindowLongPtrW(janela("Giz na Tela"), -16)
+    confere(ex & 0x40000 and not estilo & 0x20000,
+            "a barra tem botão na barra de tarefas (APPWINDOW) e tocar nele não a minimiza")
+
+
 def t_fechar(a):
+    t_barra_de_tarefas(a)
     t_alt_f4(a)
     # escolhas que têm de voltar na próxima abertura (conferidas mais adiante, ao abrir de novo)
     a.valor("seta.estilo", estilo="cheia", dupla=True)

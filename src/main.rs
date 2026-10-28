@@ -383,6 +383,7 @@ fn iniciar_js(app: &AppHandle) -> String {
 }
 
 fn main() {
+    sistema::marcar_programa();
     let opcoes = Opcoes::da_linha_de_comando();
     // uma parada inesperada fica anotada em <dados>\erros.txt: o programa não tem console para mostrá-la
     let pasta = opcoes.dados.clone();
@@ -484,9 +485,9 @@ fn main() {
                 .transparent(true)
                 .decorations(false)
                 .shadow(false)
-                .skip_taskbar(true)
                 .always_on_top(true)
                 .resizable(false)
+                .minimizable(false)   // tocar no botão da barra de tarefas não some com a barra
                 .visible(false)
                 .position(larg - 148.0, ((alt - aberta.1) / 2.0).max(10.0))   // no meio da altura, à direita
                 .inner_size(tam.0, tam.1)
@@ -510,6 +511,9 @@ fn main() {
                 }
             }
             barra.show()?;
+            // depois do show: ao mostrar, o Tauri refaz o estilo da janela e tiraria a marca do botão
+            if let Ok(h) = barra.hwnd() { sistema::botao_na_barra_de_tarefas(h.0 as isize); }
+            let _ = barra.set_skip_taskbar(false);   // pede o botão à barra de tarefas (ITaskbarList::AddTab)
             // API local: sempre escutando, mas sem token (Agentes de IA desligados) recusa tudo
             let estado = app.state::<Estado>();
             if let Some((ouvinte, porta)) = api::abrir(estado.opcoes.porta_api) {

@@ -163,3 +163,67 @@ pub fn http(porta: u16, metodo: &str, rota: &str, cabecalhos: &[(&str, &str)], t
     let status = String::from_utf8_lossy(&r[..fim]).split_whitespace().nth(1).and_then(|s| s.parse().ok()).unwrap_or(0);
     Ok((status, r[fim + 4..].to_vec()))
 }
+
+// ---- botão na barra de tarefas ----
+// Só a barra de ferramentas ganha botão na barra de tarefas (a camada transparente não). O programa usa o mesmo
+// AppUserModelID dos atalhos do instalador ("GizNaTela"): ao fixar, o Windows guarda o Giz na Tela, com o ícone dele. A
+// janela leva também o comando para reabrir, para a cópia portátil (que não tem atalho) também poder ser fixada.
+pub const APP_ID: &str = "GizNaTela";
+
+#[link(name = "shell32")]
+extern "system" {
+    fn SetCurrentProcessExplicitAppUserModelID(id: *const u16) -> i32;
+    fn SHGetPropertyStoreForWindow(hwnd: isize, iid: *const Guid, saida: *mut *mut *const usize) -> i32;
+}
+#[link(name = "user32")]
+extern "system" {
+    fn GetWindowLongPtrW(hwnd: isize, indice: i32) -> isize;
+    fn SetWindowLongPtrW(hwnd: isize, indice: i32, valor: isize) -> isize;
+    fn ShowWindow(hwnd: isize, modo: i32) -> i32;
+}
+#[repr(C)]
+struct Guid(u32, u16, u16, [u8; 8]);
+#[repr(C)]
+struct ChaveDePropriedade { fmtid: Guid, pid: u32 }
+#[repr(C)]
+struct Propvariant { vt: u16, r: [u16; 3], texto: *const u16, resto: usize }
+
+pub fn marcar_programa() {
+    let id = largo(APP_ID);
+    unsafe { SetCurrentProcessExplicitAppUserModelID(id.as_ptr()); }
+}
+
+// tudo é opcional: se o Windows recusar, o programa segue normal (só não aparece ou não fixa na barra de tarefas)
+pub fn botao_na_barra_de_tarefas(hwnd: isize) {
+    const GWL_EXSTYLE: i32 = -20;
+    const WS_EX_APPWINDOW: isize = 0x40000;    // janela com dona (a barra pertence à camada) só ganha botão com isto
+    unsafe {
+        let estilo = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+        SetWindowLongPtrW(hwnd, GWL_EXSTYLE, estilo | WS_EX_APPWINDOW);
+        // a barra de tarefas só lê o estilo quando a janela aparece: esconde e mostra de novo, sem tirar o foco
+        ShowWindow(hwnd, 0);   // SW_HIDE
+        ShowWindow(hwnd, 8);   // SW_SHOWNA
+    }
+    let exe = std::env::current_exe().map(|e| e.display().to_string()).unwrap_or_default();
+    if exe.is_empty() || exe.len() > 250 { return; }
+    let iid = Guid(0x886D8EEB, 0x8CF2, 0x4446, [0x8D, 0x02, 0xCD, 0xBA, 0x1D, 0xBD, 0xCF, 0x99]);   // IPropertyStore
+    let mut loja: *mut *const usize = std::ptr::null_mut();
+    if unsafe { SHGetPropertyStoreForWindow(hwnd, &iid, &mut loja) } != 0 || loja.is_null() { return; }
+    type Definir = unsafe extern "system" fn(*mut *const usize, *const ChaveDePropriedade, *const Propvariant) -> i32;
+    type Simples = unsafe extern "system" fn(*mut *const usize) -> i32;
+    unsafe {
+        let tabela = *loja;
+        let (definir, gravar, soltar): (Definir, Simples, Simples) =
+            (std::mem::transmute(*tabela.add(6)), std::mem::transmute(*tabela.add(7)), std::mem::transmute(*tabela.add(2)));
+        // PKEY_AppUserModel_ID (5), RelaunchCommand (2), RelaunchIconResource (3), RelaunchDisplayNameResource (4)
+        for (pid, valor) in [(2, format!("\"{exe}\"")), (3, format!("{exe},0")), (4, "Giz na Tela".to_string()),
+                             (5, APP_ID.to_string())] {
+            let texto = largo(&valor);
+            let chave = ChaveDePropriedade { fmtid: Guid(0x9F4C2855, 0x9F79, 0x4B39, [0xA8, 0xD0, 0xE1, 0xD4, 0x2D, 0xE1, 0xD5, 0xF3]), pid };
+            let v = Propvariant { vt: 31, r: [0; 3], texto: texto.as_ptr(), resto: 0 };   // VT_LPWSTR
+            definir(loja, &chave, &v);
+        }
+        gravar(loja);
+        soltar(loja);
+    }
+}

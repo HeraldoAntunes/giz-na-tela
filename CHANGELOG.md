@@ -2,6 +2,16 @@
 
 Numeração: só correções muda o terceiro número (1.0.0 → 1.0.1); recurso novo muda o segundo (1.0.x → 1.1.0).
 
+## [1.3.1] - 2026-10-28
+
+Fixar na barra de tarefas e texto de privacidade mais claro.
+
+- **Fixar na barra de tarefas:** a barra de ferramentas ganhou botão próprio na barra de tarefas, com o ícone e o mesmo
+  ID dos atalhos do instalador; dá para fixar o Giz na Tela ali. A camada de desenho continua sem botão, e tocar no
+  botão não esconde a barra.
+- **Privacidade:** o texto do README e da ajuda agora diz que, ao mandar instalar, o programa baixa o instalador e
+  confere o arquivo, e que os agentes usam um código de acesso criado pelo programa (não uma senha).
+
 ## [1.3.0] - 2026-10-28
 
 Atualizar pelo próprio programa e correções da revisão de código.
