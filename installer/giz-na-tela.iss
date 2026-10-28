@@ -1,6 +1,6 @@
 ﻿; Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE). Instalador (Inno Setup 6)
 ; Gerado por installer\build.ps1, que compila o programa antes. Gerar e publicar: só com ordem do professor.
-#define Versao "1.2.1"
+#define Versao "1.3.0"
 #define Exe "..\target\release\GizNaTela.exe"
 
 [Setup]
@@ -13,7 +13,7 @@ AppCopyright=Copyright (c) 2026 Heraldo Antunes - Licença MIT
 VersionInfoVersion={#Versao}.0
 VersionInfoDescription=Instalador do Giz na Tela
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
+PrivilegesRequiredOverridesAllowed=commandline dialog
 DefaultDirName={autopf}\Giz na Tela
 DefaultGroupName=Giz na Tela
 DisableProgramGroupPage=yes
@@ -57,6 +57,8 @@ Name: "{userdocs}\Giz na Tela\capturas"; Flags: uninsneveruninstall
 [Run]
 Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "Instalando o WebView2 da Microsoft, que desenha o Giz na Tela (precisa de internet)..."; Flags: waituntilterminated; Check: FaltaWebView2
 Filename: "{app}\GizNaTela.exe"; Description: "Abrir o Giz na Tela agora"; Flags: nowait postinstall skipifsilent
+; atualização pelo Sobre (instalador em silêncio com /reabrir=1): abre o programa de novo ao terminar
+Filename: "{app}\GizNaTela.exe"; Parameters: "--depois-de-atualizar"; Flags: nowait runasoriginaluser; Check: Reabrir
 
 [UninstallRun]
 Filename: "{sys}\taskkill.exe"; Parameters: "/IM GizNaTela.exe /F"; Flags: runhidden; RunOnceId: "FecharGizNaTela"
@@ -76,6 +78,11 @@ function TemWebView2: Boolean;
 begin
   Result := VersaoValida(HKLM32, 'SOFTWARE\' + ChaveWebView2) or VersaoValida(HKLM64, 'SOFTWARE\' + ChaveWebView2)
     or VersaoValida(HKCU, 'Software\' + ChaveWebView2);
+end;
+
+function Reabrir: Boolean;
+begin
+  Result := WizardSilent and (ExpandConstant('{param:reabrir|0}') = '1');
 end;
 
 var Faltava: Boolean;

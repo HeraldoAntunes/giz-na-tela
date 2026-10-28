@@ -2,6 +2,25 @@
 
 Numeração: só correções muda o terceiro número (1.0.0 → 1.0.1); recurso novo muda o segundo (1.0.x → 1.1.0).
 
+## [1.3.0] - 2026-10-28
+
+Atualizar pelo próprio programa e correções da revisão de código.
+
+- **Atualizar pelo próprio programa:** na ajuda (Sobre), **Procurar versão nova** consulta o GitHub só quando você
+  clica e diz se há versão nova, com as novidades. **Instalar** (com um segundo toque para confirmar) baixa o
+  instalador da página de versões, confere o SHA-256 publicado junto e instala por cima; o Giz na Tela fecha e abre de
+  novo sozinho. O instalador anota o que fez em `Documentos\Giz na Tela\atualizacao.log`. A versão portátil só mostra
+  o endereço para baixar. Quem tem a 1.2.1 ou anterior instala esta versão à mão uma vez; dali em diante, pelo Sobre.
+- Se o programa parar de repente, a causa fica anotada no arquivo `erros.txt`, na pasta de ajustes dele.
+- **Alt+F4** na tela ou na barra agora passa pelo X: com desenho na tela, pede o segundo toque. Antes fechava sem
+  perguntar (e a tinta se perdia) ou fechava só a barra, deixando a tela coberta sem controles.
+- Um agente de IA não fecha mais o Giz na Tela com desenho na tela.
+- Os ajustes ganham uma cópia de segurança: se o arquivo estragar, o programa usa a cópia em vez de voltar tudo ao
+  de fábrica.
+- Leitores de tela: os botões dizem se estão ligados, as bolinhas dizem o nome da cor, e as abas da ajuda são
+  anunciadas como abas.
+- Textos corrigidos (a dica do Salvar citava a pasta de outro programa).
+
 ## [1.2.1] - 2026-10-27
 
 Versão pequena, só a correção abaixo.

@@ -69,20 +69,25 @@ impl Default for Config {
     }
 }
 
+static GRAVANDO: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 impl Config {
     pub fn ler(dados: &Path) -> Config {
-        let mut c: Config = std::fs::read_to_string(dados.join("config.json")).ok()
-            .and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default();
+        let ler = |nome: &str| std::fs::read_to_string(dados.join(nome)).ok().and_then(|t| serde_json::from_str::<Config>(&t).ok());
+        let mut c = ler("config.json").or_else(|| ler("config.json.bak")).unwrap_or_default();
         if !NIVEIS.contains(&c.agentes.as_str()) {
             c.agentes = "desligado".into();
         }
         c
     }
     // grava num arquivo ao lado e troca: um desligamento no meio não deixa o arquivo pela metade
+    // (uma gravação por vez; a versão anterior fica em config.json.bak, lida se a principal estragar)
     pub fn gravar(&self, dados: &Path) -> std::io::Result<()> {
+        let _vez = GRAVANDO.lock().unwrap_or_else(|e| e.into_inner());
         std::fs::create_dir_all(dados)?;
-        let tmp = dados.join("config.json.tmp");
+        let (tmp, arq) = (dados.join("config.json.tmp"), dados.join("config.json"));
         std::fs::write(&tmp, serde_json::to_vec_pretty(self).unwrap_or_default())?;
-        std::fs::rename(tmp, dados.join("config.json"))
+        if arq.exists() { let _ = std::fs::copy(&arq, dados.join("config.json.bak")); }
+        std::fs::rename(tmp, arq)
     }
 }

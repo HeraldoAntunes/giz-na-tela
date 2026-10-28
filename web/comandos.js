@@ -93,6 +93,7 @@ const COMANDOS = [
     descricao: 'Régua da cota automática: pixels px medem valor na unidade (ex.: valor 10, unidade cm, pixels 245). ' +
       'Sem parâmetros, tira a régua (a cota automática volta a medir em px). Pelo uso normal, a régua se define ' +
       'sozinha quando o professor digita uma medida com unidade (ex.: 10 cm) numa cota com medida.',
+    juntos: ['valor', 'unidade', 'pixels'],
     parametros: { valor: { tipo: 'numero', min: 0.000001, max: 1e9, opcional: true },
       unidade: { tipo: 'texto', valores: ['mm', 'cm', 'm', 'km'], opcional: true },
       pixels: { tipo: 'numero', min: 1, max: 20000, opcional: true } } },
@@ -188,8 +189,8 @@ const COMANDOS = [
       'na caneta, solta o mouse. Nunca fecha o anotador.' },
   { nome: 'ajuda.abrir', nivel: 'agir', aviso: () => 'abriu a ajuda', descricao: 'Abre a janela de ajuda e ajustes.' },
   { nome: 'programa.fechar', nivel: 'agir',
-    descricao: 'Fecha o anotador (os desenhos se perdem). Com desenho na tela, só fecha com confirmar: true; pelo ' +
-      'botão, o primeiro toque pede um segundo toque para confirmar.',
+    descricao: 'Fecha o anotador. Com desenho na tela, um agente não fecha (a tinta do professor se perderia); pelo ' +
+      'botão (ou Alt+F4), o primeiro toque pede um segundo toque para confirmar.',
     parametros: { confirmar: { tipo: 'logico', opcional: true } } },
 ];
 
@@ -267,16 +268,18 @@ function validarValor(nome, d, v) {
 }
 // devolve só os parâmetros conhecidos e válidos; parâmetro a mais é erro (pega erro de digitação do agente)
 function validar(nomeComando, args) {
-  const c = POR_NOME[nomeComando];
+  const c = Object.hasOwn(POR_NOME, nomeComando) ? POR_NOME[nomeComando] : null;
   if (!c) falha(`comando desconhecido: ${nomeComando} (veja comandos.listar)`);
   if (args == null) args = {};
   if (typeof args !== 'object' || Array.isArray(args)) falha('parâmetros: precisa ser um objeto');
   const defs = c.parametros || {}, saida = {};
-  for (const k of Object.keys(args)) if (!(k in defs)) falha(`${nomeComando}: parâmetro desconhecido "${k}"`);
+  for (const k of Object.keys(args)) if (!Object.hasOwn(defs, k)) falha(`${nomeComando}: parâmetro desconhecido "${k}"`);
   for (const [k, d] of Object.entries(defs)) {
     if (args[k] === undefined || args[k] === null) { if (!d.opcional) falha(`${nomeComando}: falta "${k}"`); continue; }
     saida[k] = validarValor(k, d, args[k]);
   }
+  const juntos = c.juntos?.filter(k => k in saida);
+  if (juntos?.length && juntos.length !== c.juntos.length) falha(`${nomeComando}: mande ${c.juntos.join(', ')} juntos (ou nenhum)`);
   return saida;
 }
 // descrição para quem está de fora (API, MCP, ajuda): sem as funções internas

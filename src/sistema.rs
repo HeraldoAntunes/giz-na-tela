@@ -53,8 +53,9 @@ pub fn tem_webview2() -> bool {
         let mut buf = [0u16; 64];
         let mut tam = (buf.len() * 2) as u32;
         let r = unsafe { RegGetValueW(raiz, sub.as_ptr(), valor.as_ptr(), flags, std::ptr::null_mut(), buf.as_mut_ptr(), &mut tam) };
-        let v = String::from_utf16_lossy(&buf[..(tam as usize / 2).saturating_sub(1)]);
-        r == 0 && !v.is_empty() && v != "0.0.0.0"
+        if r != 0 { return false; }
+        let v = String::from_utf16_lossy(&buf[..(tam as usize / 2).min(buf.len()).saturating_sub(1)]);
+        !v.is_empty() && v != "0.0.0.0"
     };
     ler(HKLM, format!(r"SOFTWARE\{CHAVE}"), SO_TEXTO | VISTA_32) || ler(HKLM, format!(r"SOFTWARE\{CHAVE}"), SO_TEXTO)
         || ler(HKCU, format!(r"Software\{CHAVE}"), SO_TEXTO)
@@ -81,10 +82,21 @@ extern "system" {
     fn GetLocalTime(t: *mut Agora);
     fn CreateMutexW(atributos: *const u8, dono: i32, nome: *const u16) -> isize;
     fn GetLastError() -> u32;
+    fn CloseHandle(h: isize) -> i32;
 }
 #[link(name = "bcrypt")]
 extern "system" {
     fn BCryptGenRandom(alg: isize, buf: *mut u8, tam: u32, flags: u32) -> i32;
+    fn BCryptHash(alg: isize, segredo: *const u8, tam_segredo: u32, dados: *const u8, tam: u32, saida: *mut u8,
+        tam_saida: u32) -> i32;
+}
+
+// SHA-256 pelo próprio Windows (Windows 10 ou mais novo), para conferir o instalador baixado com o publicado
+pub fn sha256_hex(dados: &[u8]) -> Result<String, String> {
+    let mut h = [0u8; 32];
+    let r = unsafe { BCryptHash(0x41, std::ptr::null(), 0, dados.as_ptr(), dados.len() as u32, h.as_mut_ptr(), 32) };  // BCRYPT_SHA256_ALG_HANDLE
+    if r != 0 { return Err("o Windows não calculou o SHA-256".into()); }
+    Ok(h.iter().map(|x| format!("{x:02x}")).collect())
 }
 
 // tira (ou devolve) a janela das capturas de tela do Windows: WDA_EXCLUDEFROMCAPTURE
@@ -102,11 +114,11 @@ pub fn agora() -> Agora {
 }
 
 // token dos agentes: 32 bytes do gerador do sistema, em hexadecimal
-pub fn token_novo() -> String {
+pub fn token_novo() -> std::io::Result<String> {
     let mut b = [0u8; 32];
     let r = unsafe { BCryptGenRandom(0, b.as_mut_ptr(), b.len() as u32, 2) };  // BCRYPT_USE_SYSTEM_PREFERRED_RNG
-    assert_eq!(r, 0, "gerador aleatório do Windows falhou");
-    b.iter().map(|x| format!("{x:02x}")).collect()
+    if r != 0 { return Err(std::io::Error::other("o gerador aleatório do Windows falhou")); }
+    Ok(b.iter().map(|x| format!("{x:02x}")).collect())
 }
 
 // comparação que não para no primeiro byte diferente (não entrega o token pelo tempo de resposta)
@@ -115,12 +127,20 @@ pub fn iguais(a: &str, b: &str) -> bool {
 }
 
 // um anotador por pasta de dados: abrir de novo não cria uma segunda camada por cima da primeira
-pub fn ja_aberto(chave: &str) -> bool {
+// `espera`: reaberto pelo instalador depois de uma atualização, o programa antigo pode ainda estar terminando de
+// fechar; espera a trava dele soltar em vez de desistir na hora
+pub fn ja_aberto(chave: &str, espera: Duration) -> bool {
     let h = chave.bytes().fold(0xcbf29ce484222325u64, |h, b| (h ^ b as u64).wrapping_mul(0x100000001b3));
     let nome: Vec<u16> = format!("Local\\GizNaTela-{h:016x}").encode_utf16().chain([0]).collect();
-    unsafe {
-        let m = CreateMutexW(std::ptr::null(), 0, nome.as_ptr());
-        m != 0 && GetLastError() == 183  // ERROR_ALREADY_EXISTS; a trava fica aberta até o programa sair
+    let limite = std::time::Instant::now() + espera;
+    loop {
+        unsafe {
+            let m = CreateMutexW(std::ptr::null(), 0, nome.as_ptr());
+            if m == 0 || GetLastError() != 183 { return false; }  // a trava é nossa e fica aberta até o programa sair
+            CloseHandle(m);   // ERROR_ALREADY_EXISTS: solta a nossa cópia da trava, senão ela nunca some
+        }
+        if std::time::Instant::now() >= limite { return true; }
+        std::thread::sleep(Duration::from_millis(500));
     }
 }
 

@@ -24,7 +24,7 @@ pub fn abrir(porta: u16) -> Option<(TcpListener, u16)> {
 pub fn servir(app: AppHandle, ouvinte: TcpListener, porta: u16) {
     for c in ouvinte.incoming().flatten() {
         let app = app.clone();
-        std::thread::spawn(move || atender(&app, c, porta));
+        let _ = std::thread::Builder::new().spawn(move || atender(&app, c, porta));
     }
 }
 

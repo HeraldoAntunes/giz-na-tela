@@ -20,6 +20,7 @@
   .bt { width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; color: var(--texto);
         display: grid; place-items: center; cursor: pointer; padding: 0; }
   .bt:hover { background: #f1f3f5; }
+  button:focus-visible { outline: 2px solid var(--realce); outline-offset: 1px; }
   .bt.ativo { background: var(--realce-fundo); color: var(--realce); box-shadow: inset 0 0 0 2px var(--realce); }
   .bt svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round;
             stroke-linejoin: round; }
@@ -195,7 +196,7 @@
     <button class="bt" id="limpar" data-cmd="desenho.limpar" title="Limpar tudo (dá para desfazer)">
       <svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg>
     </button>
-    <button class="bt" id="salvar" data-cmd="captura.salvar" title="Salvar a tela com a tinta como imagem (Ctrl+S), em Documentos\Giz Livre\capturas">
+    <button class="bt" id="salvar" data-cmd="captura.salvar" title="Salvar a tela com a tinta como imagem (Ctrl+S), em Documentos\Giz na Tela\capturas">
       <svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="5"/></svg>
     </button>
     <button class="bt" id="giz" data-cmd="captura.mandar_ao_giz" title="Mandar para o Giz Livre (Ctrl+G): a tela com a tinta vira um quadro novo na galeria">
@@ -371,8 +372,9 @@ const EXEC = {
   },
   'ajuda.abrir': () => ponte.ajuda(),
   'programa.fechar': async (p, ctx) => {
+    if (S.tracos && ctx.origem === 'agente')
+      throw new Error('há desenho na tela: só o professor fecha o anotador agora (pelo X da barra), para a tinta não se perder');
     if (S.tracos && !p.confirmar) {
-      if (ctx.origem === 'agente') throw new Error('há desenho na tela; para fechar mesmo assim (os desenhos se perdem), mande confirmar: true');
       fimArmado = Date.now(); render(); setTimeout(render, 3100);
       aviso('Há desenho na tela. Para fechar e apagar tudo, toque no X de novo');
       return { fechou: false, aguardando_confirmacao: true };
@@ -438,7 +440,7 @@ let fila = Promise.resolve();
 const NIVEIS = { ler: 1, agir: 2 };
 function executar(nome, args, origem = 'botao', nivel = 'agir') {
   const r = fila.then(async () => {
-    const c = POR_NOME[nome];
+    const c = Object.hasOwn(POR_NOME, nome) ? POR_NOME[nome] : null;
     if (!c) throw new Error(`comando desconhecido: ${nome} (veja comandos.listar)`);
     if (origem === 'agente' && NIVEIS[c.nivel] > (NIVEIS[nivel] || 0))
       throw new Error(`${nome} precisa do nível "agir"; o professor deixou os agentes em "só ler" (Ajuda e ajustes)`);
@@ -489,7 +491,9 @@ function render() {
     const i = argsDe(b).posicao, c = S.cores[i - 1], ativa = c === S.cor;
     b.style.background = c;   // CSSOM: a CSP só bloqueia style="" escrito no HTML
     b.classList.toggle('ativo', ativa);
-    b.title = `Cor ${i} (tecla ${i})` + (ativa ? '. Toque de novo para trocar esta cor' : '');
+    const fabrica = CORES.find(f => f[0] === c);
+    b.title = `Cor ${i}${fabrica ? ': ' + fabrica[1].toLowerCase() : ''} (tecla ${i})` + (ativa ? '. Toque de novo para trocar esta cor' : '');
+    b.setAttribute('aria-label', b.title);
   });
   marca('[data-cmd="espessura.escolher"]', a => a.espessura === S.espessura);
   // o ícone da seta mostra a ponta que vale agora
@@ -526,6 +530,10 @@ function render() {
   $('some').classList.toggle('ligado', S.some);
   $('congelar').classList.toggle('ligado', S.congelado);
   $('ampliar').classList.toggle('ligado', S.ampliado);
+  // leitores de tela: o que está ligado ou escolhido não aparece só pela cor
+  document.querySelectorAll('.bt.ferr, .bt.opc, .cor, .bt.tm, .pena, #quadro, #fixar').forEach(b =>
+    b.setAttribute('aria-pressed', String(b.classList.contains('ativo') || b.classList.contains('ligado') || b.classList.contains('branco') || b.classList.contains('negro'))));
+  document.querySelectorAll('button[title]').forEach(b => { if (!b.getAttribute('aria-label')) b.setAttribute('aria-label', b.title); });
   const armado = Date.now() - fimArmado < 3000;
   $('fim').classList.toggle('armado', armado);
   $('fim').title = armado ? 'Toque de novo para fechar e apagar os desenhos' : 'Fechar o anotador (os desenhos se perdem)';

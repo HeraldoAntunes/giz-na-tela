@@ -86,14 +86,16 @@ def perto(c1, c2, tol=40):
 
 # ---------- o programa ----------
 class Anotador:
-    def __init__(self, exe, dados, capturas, nivel="agir", porta_giz=None, config_extra=None):
+    # config_extra None: deixa o config.json como está (para testar um arquivo estragado)
+    def __init__(self, exe, dados, capturas, nivel="agir", porta_giz=None, config_extra={}):
         self.exe, self.dados, self.porta = exe, Path(dados), porta_livre()
-        cfg = {"agentes": nivel, **(config_extra or {})}
         self.dados.mkdir(parents=True, exist_ok=True)
-        atual = {}
-        if (self.dados / "config.json").exists():
-            atual = json.loads((self.dados / "config.json").read_text(encoding="utf-8"))
-        (self.dados / "config.json").write_text(json.dumps({**atual, **cfg}), encoding="utf-8")
+        if config_extra is not None:
+            cfg = {"agentes": nivel, **config_extra}
+            atual = {}
+            if (self.dados / "config.json").exists():
+                atual = json.loads((self.dados / "config.json").read_text(encoding="utf-8"))
+            (self.dados / "config.json").write_text(json.dumps({**atual, **cfg}), encoding="utf-8")
         (self.dados / "agente" / "porta").unlink(missing_ok=True)
         args = [str(exe), "--dados", str(dados), "--capturas", str(capturas), "--porta-api", str(self.porta)]
         if porta_giz:
@@ -438,6 +440,8 @@ def t_escala(a):
     confere(a.estado()["regua"] is None, "cota.escala sem parâmetros tira a régua")
     a.valor("forma.desenhar", forma="cota", cota="auto", x1=300, y1=400, x2=550, y2=400)
     confere(a.estado()["ultima_medida"] == "250 px", f"cota automática sem régua mede em px ({a.estado()['ultima_medida']})")
+    s_, r = a.cmd("cota.escala", valor=10, unidade="cm")
+    confere(s_ == 400 and "juntos" in r["erro"], "cota.escala com a régua pela metade é recusada (não some calada)")
     a.valor("cota.escala", valor=10, unidade="cm", pixels=200)
     a.valor("forma.desenhar", forma="cota", cota="auto", x1=300, y1=500, x2=600, y2=900)
     confere(a.estado()["ultima_medida"] == "25 cm", f"cota automática com régua mede em cm ({a.estado()['ultima_medida']})")
@@ -640,7 +644,26 @@ def t_ajuda(a):
     confere(s == 200, "ajuda.abrir")
 
 
+def janela(titulo):
+    u = ctypes.windll.user32
+    u.FindWindowW.restype = ctypes.c_void_p
+    return u.FindWindowW(None, titulo)
+
+
+def t_alt_f4(a):
+    a.valor("texto.escrever", texto="Alt+F4", x=100, y=160)
+    u = ctypes.windll.user32
+    u.PostMessageW.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p, ctypes.c_void_p]
+    for titulo in ("Giz na Tela - camada", "Giz na Tela"):
+        u.PostMessageW(janela(titulo), 0x0010, None, None)   # WM_CLOSE, o que o Alt+F4 manda
+        time.sleep(1.0)
+        confere(a.proc.poll() is None and janela(titulo) and a.estado()["desenhos"] >= 1,
+                f"Alt+F4 em \"{titulo}\" com desenho não fecha nem perde a tinta")
+    a.valor("desenho.limpar")
+
+
 def t_fechar(a):
+    t_alt_f4(a)
     # escolhas que têm de voltar na próxima abertura (conferidas mais adiante, ao abrir de novo)
     a.valor("seta.estilo", estilo="cheia", dupla=True)
     a.valor("cota.estilo", estilo="tracos")
@@ -649,9 +672,11 @@ def t_fechar(a):
     a.valor("caneta.guardar", posicao=3, ferramenta="marca", cor="#654321", espessura="media")
     a.valor("caneta.botao", acao="borracha")
     a.valor("texto.escrever", texto="não fecha", x=100, y=100)
-    s, r = a.cmd("programa.fechar")
-    confere(s == 400 and "confirmar" in r["erro"] and a.proc.poll() is None, "programa.fechar com desenho pede confirmar")
-    confere(a.valor("programa.fechar", confirmar=True)["fechou"], "programa.fechar confirmar: true")
+    s, r = a.cmd("programa.fechar", confirmar=True)
+    confere(s == 400 and "professor" in r["erro"] and a.proc.poll() is None,
+            "agente não fecha o anotador com desenho na tela, nem com confirmar")
+    a.valor("desenho.limpar")
+    confere(a.valor("programa.fechar")["fechou"], "programa.fechar sem desenho fecha")
     try:
         a.proc.wait(5)
     except subprocess.TimeoutExpired:
@@ -660,6 +685,13 @@ def t_fechar(a):
 
 
 def seguranca(a):
+    for nome in ("constructor", "toString", "__proto__"):
+        s_, r = a.cmd(nome)
+        confere(s_ == 400 and "desconhecido" in r.get("erro", ""), f"comando com nome herdado do JavaScript é recusado ({nome})")
+    _seguranca_api(a)
+
+
+def _seguranca_api(a):
     base = f"http://127.0.0.1:{a.porta}/api/comandos"
     def pedir(cab, metodo="GET", url=base, dados=None):
         req = urllib.request.Request(url, headers=cab, method=metodo, data=dados)
@@ -746,6 +778,8 @@ def main():
     if RETRATOS:
         RETRATOS.mkdir(parents=True, exist_ok=True)
     exe = Path(o.exe)
+    # monitor desligado por economia de energia faz o retrato da tela falhar: mantém a tela ligada durante o teste
+    ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000002 | 0x00000001)   # CONTINUOUS|DISPLAY|SYSTEM
     tmp = Path(tempfile.mkdtemp(prefix="giz-na-tela-teste-"))
     dados, capturas = tmp / "dados", tmp / "capturas"
     giz, giz_info, porta_giz = None, None, porta_livre()
@@ -834,6 +868,16 @@ def main():
             confere(r[0] > -1000, f"posição de uma tela que não existe mais é ignorada ({r[:2]})")
         finally:
             a5.fechar()
+        bak = json.loads((dados / "config.json").read_text(encoding="utf-8"))
+        bak.update({"barra": [130, 110], "recolhida": False, "agentes": "agir"})
+        (dados / "config.json.bak").write_text(json.dumps(bak), encoding="utf-8")
+        (dados / "config.json").write_text('{"barra": [1, 2', encoding="utf-8")   # cortado no meio
+        a6 = Anotador(exe, dados, capturas, "agir", porta_giz, None)
+        try:
+            h, r = posicao_da_barra()
+            confere(r[:2] == (130, 110), f"config.json estragado: o programa usa a cópia de segurança ({r[:2]})")
+        finally:
+            a6.fechar()
 
         print("== níveis")
         b = Anotador(exe, dados, capturas, "ler", porta_giz)
@@ -854,6 +898,11 @@ def main():
     finally:
         if giz:
             giz.terminate(); giz.wait()
+        # o programa anota cada parada inesperada em <dados>\erros.txt; antes de apagar a pasta, mostra e acusa
+        erros = dados / "erros.txt"
+        confere(not erros.exists(), "nenhuma parada inesperada do programa (erros.txt)")
+        if erros.exists():
+            print(erros.read_text(encoding="utf-8", errors="replace"))
         shutil.rmtree(tmp, ignore_errors=True)
     print(f"\n{ok_total} ok, {len(falhas)} falha(s)")
     for f in falhas:

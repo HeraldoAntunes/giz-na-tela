@@ -5,6 +5,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod api;
+mod atualizacao;
 mod captura;
 mod config;
 mod mcp;
@@ -52,6 +53,8 @@ window.ponte = {
   dicaInk: () => inv('dica_ink_mostrada'),
   preferencias: p => inv('preferencias', { p }),
   escolherCor: atual => inv('escolher_cor', { atual }),
+  procurarVersao: () => inv('procurar_versao'),
+  instalarVersao: () => inv('instalar_versao'),
   comandoNaBarra: (nome, args) => inv('comando_na_barra', { nome, args: args ?? {} }),
   copiar: () => inv('copiar'),
   telas: () => inv('telas'),
@@ -247,6 +250,16 @@ async fn capturar(app: AppHandle, largura: u32) -> Result<Value, String> {
     tauri::async_runtime::spawn_blocking(move || captura::ler(&app, largura)).await.map_err(|e| e.to_string())?
 }
 
+// versão nova: só pela ajuda (Sobre), nunca por agente; nada é instalado sem o professor confirmar lá
+#[tauri::command]
+async fn procurar_versao() -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(atualizacao::procurar).await.map_err(|e| e.to_string())?
+}
+#[tauri::command]
+async fn instalar_versao(app: AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || atualizacao::instalar(&app)).await.map_err(|e| e.to_string())?
+}
+
 fn gravar_config(app: &AppHandle) {
     let estado = app.state::<Estado>();
     let c = estado.config.lock().unwrap().clone();
@@ -290,7 +303,8 @@ fn info(app: AppHandle) -> Value {
             "preferencias": cfg.preferencias,
             "dados": estado.opcoes.dados.display().to_string(),
             "capturas": captura::pasta_capturas(&app).map(|p| p.display().to_string()).unwrap_or_default(),
-            "exe": std::env::current_exe().map(|p| p.display().to_string()).unwrap_or_default() })
+            "exe": std::env::current_exe().map(|p| p.display().to_string()).unwrap_or_default(),
+            "instalado": atualizacao::modo_instalado().is_some() })
 }
 
 // liga, desliga ou muda o nível dos agentes; ligar de novo depois de desligar troca o token
@@ -316,7 +330,7 @@ fn preparar_token(estado: &Estado, nivel: &str) -> std::io::Result<()> {
     }
     if token.is_none() {
         let lido = std::fs::read_to_string(&arq).ok().map(|t| t.trim().to_string()).filter(|t| t.len() == 64);
-        let t = match lido { Some(t) => t, None => sistema::token_novo() };
+        let t = match lido { Some(t) => t, None => sistema::token_novo()? };
         std::fs::create_dir_all(&pasta)?;
         std::fs::write(&arq, &t)?;
         *token = Some(t);
@@ -382,10 +396,23 @@ fn main() {
             .and_then(|mut f| std::io::Write::write_all(&mut f, linha.as_bytes()));
         padrao(info);
     }));
+    // para conferir a atualização sem instalar nada: procura a versão mais recente, ou baixa e confere o SHA-256
+    if std::env::args().any(|a| a == "--procurar-versao") {
+        println!("{}", atualizacao::procurar().unwrap_or_else(|e| json!({ "erro": e })));
+        return;
+    }
+    if std::env::args().any(|a| a == "--baixar-versao") {
+        match atualizacao::baixar_e_conferir(|_, _| {}) {
+            Ok((v, arq)) => println!("{}", json!({ "versao": v, "arquivo": arq.display().to_string(), "sha256": "confere" })),
+            Err(e) => println!("{}", json!({ "erro": e })),
+        }
+        return;
+    }
     if opcoes.mcp {
         std::process::exit(mcp::rodar(&opcoes));
     }
-    if sistema::ja_aberto(&opcoes.dados.display().to_string().to_lowercase()) {
+    let espera = if std::env::args().any(|a| a == "--depois-de-atualizar") { 15 } else { 0 };
+    if sistema::ja_aberto(&opcoes.dados.display().to_string().to_lowercase(), Duration::from_secs(espera)) {
         return;
     }
     if !sistema::tem_webview2() {
@@ -402,7 +429,7 @@ fn main() {
         .manage(estado)
         .invoke_handler(tauri::generate_handler![responder, camada, estado_camada, tecla, fixar, recolher, congelar,
             salvar, capturar, fim, ajuda, info, agentes, caneta_vista, dica_ink_mostrada, preferencias, escolher_cor,
-            comando_na_barra, copiar, telas, mudar_tela])
+            comando_na_barra, copiar, telas, mudar_tela, procurar_versao, instalar_versao])
         // Ctrl+Alt+F liga e desliga o Mouse livre de qualquer programa (com ele ligado o teclado não chega aqui)
         .plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(|app, _atalho, ev| {
             if ev.state() == ShortcutState::Pressed {
@@ -411,6 +438,11 @@ fn main() {
         }).build())
         // lembra onde a barra ficou (aberta ou recolhida) para abrir no mesmo lugar da próxima vez
         .on_window_event(|w, ev| {
+            if let (WindowEvent::CloseRequested { api, .. }, "camada" | "barra") = (ev, w.label()) {
+                api.prevent_close();
+                js(w.app_handle(), "barra", "executar('programa.fechar', {}, 'botao').catch(e => aviso(e.message))");
+                return;
+            }
             if let (WindowEvent::Moved(p), "barra") = (ev, w.label()) {
                 let estado = w.state::<Estado>();
                 let recolhida = *estado.recolhida.lock().unwrap();

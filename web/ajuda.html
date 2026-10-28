@@ -17,6 +17,7 @@
   nav button { border: 0; background: none; font: 600 13px "Segoe UI", sans-serif; color: var(--suave); padding: 8px 12px;
                border-bottom: 3px solid transparent; cursor: pointer; }
   nav button.ativo { color: var(--verde); border-bottom-color: var(--verde); }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--realce); outline-offset: 2px; }
   main { padding: 6px 22px 22px; }
   section { display: none; }
   section.ativo { display: block; }
@@ -43,6 +44,11 @@
   #agMsg { color: var(--suave); font-size: 13px; min-height: 1.5em; }
   .exp { font: 600 11px "Segoe UI", sans-serif; color: #8a5a00; background: #fff4d6; border-radius: 6px; padding: 1px 7px;
          margin-left: 6px; vertical-align: 1px; }
+  .oculto { display: none; }
+  #versaoNova { border: 1px solid var(--borda); border-radius: 8px; padding: 8px 12px; margin: 6px 0; background: var(--painel); }
+  #notas { white-space: pre-wrap; font: 13px/1.45 "Segoe UI", sans-serif; background: none; border: 0; padding: 0; margin: 6px 0; }
+  .btn.forte { background: var(--verde); color: #fff; border-color: var(--verde); }
+  .btn.forte:hover { background: #185a39; }
   select { font: 14px "Segoe UI", sans-serif; padding: 4px 6px; border: 1px solid var(--borda); border-radius: 8px; }
 </style>
 </head>
@@ -55,7 +61,7 @@
   <div><b>Giz na Tela <img class="bandeira" src="bandeira-brasil.svg" alt="Brasil" title="Feito no Brasil" width="20" height="14"></b><span id="versao">versão</span><br>
     <span>Escrever por cima de qualquer programa com a mesa digitalizadora, o mouse ou a tela de toque.</span></div>
 </header>
-<nav>
+<nav role="tablist">
   <button data-aba="uso" class="ativo">Como usar</button>
   <button data-aba="atalhos">Atalhos</button>
   <button data-aba="mesa">Mesa digitalizadora</button>
@@ -164,8 +170,8 @@
     <label><input type="radio" name="nivel" value="ler"> <b>Só ler</b>
       <small>O agente vê o estado e um retrato da tela com as anotações; não desenha nem muda nada.</small></label>
     <label><input type="radio" name="nivel" value="agir"> <b>Agir</b>
-      <small>O agente também escreve, desenha, aponta e congela a tela. Cada ação aparece com o aviso "Agente: ..." e
-        sai com um <kbd>Ctrl</kbd>+<kbd>Z</kbd>.</small></label>
+      <small>O agente também escreve, desenha, aponta e congela a tela. Cada ação aparece com o aviso "Agente: ...", e o
+        que ele desenha sai com um <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Com desenho na tela, ele não fecha o anotador.</small></label>
   </div>
   <div id="agMsg" aria-live="polite"></div>
   <h2>Ligar ao agente</h2>
@@ -180,9 +186,16 @@
     <dt>Autor</dt><dd>© 2026 Heraldo Antunes</dd>
     <dt>Licença</dt><dd>Software livre, licença MIT: uso, cópia, modificação e distribuição gratuitos, mantendo o aviso de
       licença.</dd>
-    <dt>Código e versões novas</dt><dd>github.com/HeraldoAntunes/giz-na-tela (o programa não consulta a internet
-      sozinho: para ver se há versão nova, abra esse endereço no navegador).</dd>
-    <dt>Privacidade</dt><dd>Funciona sem internet. Nada sai do computador: não há conta, anúncio nem coleta de dados. As
+    <dt>Código e versões novas</dt><dd>github.com/HeraldoAntunes/giz-na-tela. O programa só consulta a internet quando
+      você clica em <b>Procurar versão nova</b>, e nada se instala sem você mandar.
+      <p><button class="btn" id="procurar">Procurar versão nova</button> <span id="versaoMsg" aria-live="polite"></span></p>
+      <div id="versaoNova" class="oculto">
+        <b id="versaoTitulo"></b>
+        <pre id="notas"></pre>
+        <p><button class="btn forte" id="instalar">Instalar</button> <span id="instalarMsg" aria-live="polite"></span></p>
+      </div></dd>
+    <dt>Privacidade</dt><dd>Funciona sem internet. Nada sai do computador: não há conta, anúncio nem coleta de dados. Só
+      o botão Procurar versão nova, quando você clica, consulta a página do programa no GitHub. As
       imagens salvas ficam em <span data-info="capturas"></span>; os ajustes, em <span data-info="dados"></span>.</dd>
     <dt>Como foi feito</dt><dd>Com apoio de assistentes de programação de inteligência artificial, usados como
       ferramenta: a concepção, as decisões, a revisão e os testes são do autor. O código é todo próprio; ideias de
@@ -200,7 +213,12 @@
 <script src="comandos.js"></script>
 <script>
 const $ = id => document.getElementById(id);
+const marcarAbas = () => document.querySelectorAll('nav button').forEach(b => {
+  b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', String(b.classList.contains('ativo')));
+});
+marcarAbas();
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  setTimeout(marcarAbas);
   document.querySelectorAll('nav button, section').forEach(e => e.classList.remove('ativo'));
   b.classList.add('ativo'); $(b.dataset.aba).classList.add('ativo');
 });
@@ -243,6 +261,47 @@ document.querySelectorAll('input[name=nivel]').forEach(r => r.onchange = async (
 });
 $('botaoCaneta').onchange = () => ponte?.comandoNaBarra('caneta.botao', { acao: $('botaoCaneta').value });
 $('coresDeFabrica').onclick = () => { ponte?.comandoNaBarra('cores.restaurar'); $('coresDeFabrica').textContent = 'Cores e canetas de fábrica de volta'; };
+// versão nova: procurar só quando o professor clica; instalar só depois de ele confirmar (segundo toque)
+let versaoInfo = null, confirmarAte = 0;
+$('procurar').onclick = async () => {
+  $('procurar').disabled = true; $('versaoMsg').textContent = 'Consultando o GitHub...';
+  $('versaoNova').classList.add('oculto');
+  try {
+    const v = await ponte.procurarVersao();
+    if (!v.nova) { $('versaoMsg').textContent = `Você já está na versão mais recente (${v.versao}).`; return; }
+    versaoInfo = v;
+    $('versaoMsg').textContent = '';
+    $('versaoTitulo').textContent = `Versão ${v.versao} disponível (você tem a ${window.CONFIG?.versao || ''}).`;
+    $('notas').textContent = v.notas || '';
+    $('instalar').textContent = `Instalar a versão ${v.versao}`;
+    $('instalar').disabled = false; $('instalarMsg').textContent = '';
+    if (!v.instalavel) {
+      $('instalar').classList.add('oculto');
+      $('instalarMsg').textContent = 'Esta cópia não veio do instalador para a pasta de sempre (é a portátil, a de desenvolvimento ou foi posta à mão): baixe a versão nova em ' +
+        'github.com/HeraldoAntunes/giz-na-tela/releases.';
+    }
+    $('versaoNova').classList.remove('oculto');
+  } catch (e) { $('versaoMsg').textContent = String(e); }
+  finally { $('procurar').disabled = false; }
+};
+$('instalar').onclick = async () => {
+  if (Date.now() > confirmarAte) {
+    confirmarAte = Date.now() + 6000;
+    $('instalarMsg').textContent = 'Toque de novo para confirmar: o Giz na Tela fecha, instala a versão nova e abre de ' +
+      'novo sozinho (a tinta que estiver na tela se perde).';
+    return;
+  }
+  $('instalar').disabled = true; $('procurar').disabled = true;
+  $('instalarMsg').textContent = 'Baixando e conferindo o SHA-256...';
+  try {
+    await ponte.instalarVersao();
+    $('instalarMsg').textContent = 'Instalando: o Giz na Tela vai fechar e abrir de novo.';
+  } catch (e) {
+    $('instalarMsg').textContent = 'Não instalou: ' + e;
+    $('instalar').disabled = false; $('procurar').disabled = false;
+  }
+};
+window.andamento = pct => { $('instalarMsg').textContent = `Baixando: ${pct}%`; };
 $('copiar').onclick = async () => {
   try { await navigator.clipboard.writeText($('mcpConfig').textContent); $('agMsg').textContent = 'Copiado.'; }
   catch { getSelection().selectAllChildren($('mcpConfig')); $('agMsg').textContent = 'Selecionado: use Ctrl+C.'; }
