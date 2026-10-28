@@ -1,6 +1,6 @@
 ﻿; Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE). Instalador (Inno Setup 6)
 ; Gerado por installer\build.ps1, que compila o programa antes. Gerar e publicar: só com ordem do professor.
-#define Versao "1.1.1"
+#define Versao "1.2.0"
 #define Exe "..\target\release\GizNaTela.exe"
 
 [Setup]

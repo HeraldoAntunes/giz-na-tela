@@ -56,6 +56,14 @@
   /* tamanhos aqui e cores das bolinhas pelo script (o professor troca as cores): a política de segurança (CSP) do
      programa bloqueia style="" escrito direto nos elementos */
   .ocupado { opacity: .5; pointer-events: none; }
+  .oculto { display: none !important; }
+  /* canetas prontas: o desenho mostra a cor e a grossura (bolinha) ou o marca-texto (faixa translúcida) */
+  .pena { width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; cursor: pointer; padding: 0;
+          display: grid; place-items: center; }
+  .pena:hover { background: #f1f3f5; }
+  .pena.ativo { background: var(--realce-fundo); box-shadow: inset 0 0 0 2px var(--realce); }
+  .pena svg { width: 24px; height: 24px; }
+  .rotulo { font-size: 10px; color: var(--suave); margin: -2px 0 -1px; }
   body.fixado .desenho { opacity: .45; }
 </style>
 </head>
@@ -76,17 +84,20 @@
   <div class="sep"></div>
 
   <div class="desenho grade">
-    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"caneta"}' title="Caneta (C)">
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"caneta"}' title="Caneta (C; Shift: traço reto)">
       <svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.6L16.5 4.1a2 2 0 0 1 2.8 0l.6.6a2 2 0 0 1 0 2.8L8.6 18.8z"/><path d="M14.5 6l3.5 3.5"/></svg>
     </button>
-    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"marca"}' title="Marca-texto (M)">
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"marca"}' title="Marca-texto (M; Shift: traço reto)">
       <svg viewBox="0 0 24 24"><path d="M9 15l-3 3v2h4l2-2"/><path d="M9 15l8-8 3 3-8 8z"/><path d="M4 21h16" opacity=".5"/></svg>
     </button>
     <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"borracha"}' title="Borracha (B)">
       <svg viewBox="0 0 24 24"><path d="M7 20h13"/><path d="M4.5 15.5l9-9a2 2 0 0 1 2.8 0l2.2 2.2a2 2 0 0 1 0 2.8L11 19H8z"/><path d="M9.5 10.5l4.5 4.5"/></svg>
     </button>
-    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"mover"}' title="Mover (Espaço): toque num traço, forma, texto ou carimbo e arraste (Ctrl+Z desfaz)">
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"mover"}' title="Mover (Espaço): toque num objeto e arraste (Ctrl+Z desfaz)">
       <svg viewBox="0 0 24 24"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12"/><path d="M11 11.5v-8a1.5 1.5 0 0 1 3 0V12"/><path d="M14 11.5V5a1.5 1.5 0 0 1 3 0v7"/><path d="M17 9.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-1.2a6 6 0 0 1-4.6-2.2L4.1 15.4a1.6 1.6 0 0 1 2.3-2.2L8 15"/></svg>
+    </button>
+    <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"laco"}' title="Laço (W): contorne vários traços, formas e textos; depois arraste o grupo, toque numa cor para pintá-lo ou aperte Delete para apagar">
+      <svg viewBox="0 0 24 24"><path d="M12 3.5c4.7 0 8.5 2.5 8.5 5.7s-3.8 5.7-8.5 5.7-8.5-2.5-8.5-5.7S7.3 3.5 12 3.5z" stroke-dasharray="3 2.4"/><path d="M7.5 14c-1.4 1.6-1.5 3.6.2 4.8s3.7.2 3.6-1.6"/></svg>
     </button>
     <button class="bt ferr" data-cmd="ferramenta.escolher" data-args='{"ferramenta":"reta"}' title="Reta (L; Shift: de 15 em 15 graus)">
       <svg viewBox="0 0 24 24"><path d="M5 19L19 5"/></svg>
@@ -127,9 +138,6 @@
     <button class="bt opc" id="ampliar" data-cmd="tela.ampliar" title="Ampliar (A): toque no ponto da tela para aumentar 2 vezes e escrever em cima; a roda do mouse ou + e − mudam o aumento">
       <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/><path d="M9 12h6M12 9v6"/></svg>
     </button>
-    <button class="bt opc" id="congelar" data-cmd="tela.congelar" title="Congelar (G): a tela fica parada (vídeo, apresentação) enquanto você explica">
-      <svg viewBox="0 0 24 24"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/><path d="M9.5 4.5L12 7l2.5-2.5M9.5 19.5L12 17l2.5 2.5"/></svg>
-    </button>
   </div>
   <div class="sep"></div>
 
@@ -142,6 +150,15 @@
     </button>
     <button class="bt opc" id="some" data-cmd="tinta.some" title="Tinta que some sozinha em 3 segundos (D), para apontar sem sujar a tela">
       <svg viewBox="0 0 24 24"><path d="M4 17c3-6 5-6 7-2s4 4 6-3" stroke-dasharray="2.5 2.5"/><circle cx="19" cy="6" r="2.5"/></svg>
+    </button>
+    <button class="bt opc" id="congelar" data-cmd="tela.congelar" title="Congelar (G): a tela fica parada (vídeo, apresentação) enquanto você explica">
+      <svg viewBox="0 0 24 24"><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/><path d="M9.5 4.5L12 7l2.5-2.5M9.5 19.5L12 17l2.5 2.5"/></svg>
+    </button>
+    <button class="bt oculto" id="btTela" data-cmd="tela.escolher" title="Outra tela (Y)">
+      <svg viewBox="0 0 24 24"><rect x="2.5" y="3.5" width="11" height="8" rx="1"/><rect x="10.5" y="12.5" width="11" height="8" rx="1"/><path d="M5.5 15v2.5h3M7 16l1.5 1.5L7 19"/></svg>
+    </button>
+    <button class="bt" id="copiar" data-cmd="captura.copiar" title="Copiar a tela com a tinta (Ctrl+C), para colar com Ctrl+V num documento ou numa prova">
+      <svg viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="12" height="12" rx="2"/><path d="M15.5 8.5V5a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 5v9A1.5 1.5 0 0 0 5 15.5h3.5"/></svg>
     </button>
   </div>
   <div class="sep"></div>
@@ -156,6 +173,13 @@
     <button class="bt tm" data-cmd="espessura.escolher" data-args='{"espessura":"fina"}' title="Traço fino (7)"><span class="ponto fino"></span></button>
     <button class="bt tm" data-cmd="espessura.escolher" data-args='{"espessura":"media"}' title="Traço médio (8)"><span class="ponto medio"></span></button>
     <button class="bt tm" data-cmd="espessura.escolher" data-args='{"espessura":"grossa"}' title="Traço grosso (9)"><span class="ponto grosso"></span></button>
+  </div>
+  <div class="sep"></div>
+  <div class="rotulo">Canetas prontas</div>
+  <div class="desenho grade">
+    <button class="pena" data-cmd="caneta.usar" data-args='{"posicao":1}'></button>
+    <button class="pena" data-cmd="caneta.usar" data-args='{"posicao":2}'></button>
+    <button class="pena" data-cmd="caneta.usar" data-args='{"posicao":3}'></button>
   </div>
   <div class="sep"></div>
 
@@ -189,13 +213,15 @@
 <script>
 // A barra guarda o estado e executa os comandos do registro (comandos.js). Botão, atalho, Esc, Ctrl+Alt+F e pedido de
 // fora (API e MCP) entram por executar(); a camada só desenha e devolve o estado dela depois de cada pedido.
-const { POR_NOME, ATALHOS, ESPESSURAS, COMANDOS, DE_NOVO, COTAS, CORES, validar } = window.GizTela;
+const { POR_NOME, ATALHOS, ESPESSURAS, COMANDOS, DE_NOVO, COTAS, CORES, CANETAS, BOTAO_DA_CANETA, validar } = window.GizTela;
 const CORES_DE_FABRICA = CORES.map(c => c[0]);
 const ponte = window.ponte, $ = id => document.getElementById(id);
 const S = { cores: [...CORES_DE_FABRICA], escala: null, ultimaMedida: null, ferramenta: 'caneta', cor: CORES_DE_FABRICA[0], espessura: 'media', quadro: 'tela', preencher: 'nada', seta: 'aberta', setaDupla: false, cota: 'setas', some: false,
   fixado: false, recolhido: false, congelado: false, ampliado: false, tracos: 0, desfazer: false, refazer: false,
-  largura: 0, altura: 0 };
+  largura: 0, altura: 0, canetas: CANETAS.map(c => ({ ...c })), botaoCaneta: 'nada', tela: 1, telas: [], selecionados: 0, pena: 0 };
 const QUADROS = ['tela', 'branco', 'negro'], PREENCHER = ['nada', 'translucido', 'cheio'];
+// cor clara (amarelo, branco) ganha contorno mais suave no desenho da caneta pronta
+function claro(cor) { const n = parseInt(cor.slice(1), 16); return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) > 170; }
 const proximo = (lista, atual) => lista[(lista.indexOf(atual) + 1) % lista.length];
 async function camada(nome, valor) {
   const e = await ponte.camada(nome, valor ?? null);
@@ -203,7 +229,8 @@ async function camada(nome, valor) {
   render();   // quem pediu recebe o estado público (estadoPublico), não o interno da camada
 }
 const aviso = msg => ponte.camada('aviso', msg);
-window.estadoCamada = e => { Object.assign(S, e); render(); };   // traço feito à mão, tinta que sumiu etc.
+window.estadoCamada = e => { Object.assign(S, e); render(); };
+function lerTelas(t) { if (t && Array.isArray(t.telas)) { S.telas = t.telas; S.tela = t.atual; render(); } }   // traço feito à mão, tinta que sumiu etc.
 
 async function fixar(sim) {
   if (sim === S.fixado) return;
@@ -222,13 +249,24 @@ async function recolher(sim) {
 async function voltarAEscrever(ctx) { if (ctx.origem !== 'agente' && S.fixado) await fixar(false); }
 
 let fimArmado = 0;
+// Caneta pronta na mão: mudar a cor, a espessura ou trocar entre caneta e marca-texto muda a própria caneta, como uma
+// caneta de verdade. Pegar outra ferramenta (seta, texto...) larga a caneta. Os agentes não mexem nas canetas.
+function seguirPena(ctx) {
+  if (!S.pena || ctx?.origem === 'agente') return;
+  if (S.ferramenta !== 'caneta' && S.ferramenta !== 'marca') { S.pena = 0; return; }
+  S.canetas[S.pena - 1] = { ferramenta: S.ferramenta, cor: S.cor, espessura: S.espessura };
+}
+const soltarLaco = () => (S.selecionados ? camada('selecao', { acao: 'soltar' }) : null);
 const EXEC = {
-  'ferramenta.escolher': async p => { S.ferramenta = p.ferramenta; await camada('ferramenta', p.ferramenta); },
-  'cor.escolher': async p => {
+  'ferramenta.escolher': async (p, ctx) => { S.ferramenta = p.ferramenta; await camada('ferramenta', p.ferramenta); seguirPena(ctx); },
+  'cor.escolher': async (p, ctx) => {
+    // com o laço segurando objetos, a bolinha de cor pinta o que ele pegou
+    if (S.ferramenta === 'laco' && S.selecionados) await camada('selecao', { acao: 'cor', cor: p.cor });
     S.cor = p.cor; if (S.ferramenta === 'borracha') S.ferramenta = 'caneta';
     await camada('cor', p.cor);
+    seguirPena(ctx);
   },
-  'cor.posicao': p => EXEC['cor.escolher']({ cor: S.cores[p.posicao - 1] }),
+  'cor.posicao': (p, ctx) => EXEC['cor.escolher']({ cor: S.cores[p.posicao - 1] }, ctx),
   // trocar a cor de uma bolinha: pelo botão, abre o seletor de cores do Windows; de fora, a cor vem no pedido
   'cor.trocar': async (p, ctx) => {
     let cor = p.cor;
@@ -238,13 +276,24 @@ const EXEC = {
       if (!cor) return;   // o professor fechou o seletor sem escolher
     }
     S.cores[p.posicao - 1] = cor.toLowerCase();
-    await EXEC['cor.escolher']({ cor: S.cores[p.posicao - 1] });
+    await EXEC['cor.escolher']({ cor: S.cores[p.posicao - 1] }, ctx);
   },
-  'cores.restaurar': async () => {
-    S.cores = [...CORES_DE_FABRICA];
-    if (!S.cores.includes(S.cor)) await EXEC['cor.escolher']({ cor: S.cores[0] });
+  'cores.restaurar': async (p, ctx) => {
+    S.cores = [...CORES_DE_FABRICA]; S.canetas = CANETAS.map(c => ({ ...c })); S.pena = 0;
+    if (!S.cores.includes(S.cor)) await EXEC['cor.escolher']({ cor: S.cores[0] }, ctx);
   },
-  'espessura.escolher': async p => { S.espessura = p.espessura; await camada('espessura', ESPESSURAS[p.espessura]); },
+  'espessura.escolher': async (p, ctx) => { S.espessura = p.espessura; await camada('espessura', ESPESSURAS[p.espessura]); seguirPena(ctx); },
+  // caneta pronta: ferramenta, cor e espessura de uma vez
+  'caneta.usar': async p => {
+    const c = S.canetas[p.posicao - 1];
+    S.ferramenta = c.ferramenta; S.cor = c.cor; S.espessura = c.espessura; S.pena = p.posicao;
+    await camada('ferramenta', c.ferramenta); await camada('cor', c.cor); await camada('espessura', ESPESSURAS[c.espessura]);
+  },
+  'caneta.guardar': async p => {
+    S.canetas[p.posicao - 1] = { ferramenta: p.ferramenta ?? (S.ferramenta === 'marca' ? 'marca' : 'caneta'),
+      cor: p.cor ?? S.cor, espessura: p.espessura ?? S.espessura };
+  },
+  'caneta.botao': async p => { S.botaoCaneta = p.acao; await camada('botao', p.acao); },
   'desenho.desfazer': () => camada('desfazer'),
   'desenho.refazer': () => camada('refazer'),
   'desenho.limpar': () => camada('limpar'),
@@ -272,14 +321,35 @@ const EXEC = {
       'tela. Para voltar a escrever: botão da barra ou Ctrl+Alt+F' : 'Escrevendo');
   },
   'barra.recolher': p => recolher(p.recolhida ?? !S.recolhido),
-  'captura.salvar': () => ponte.salvar(false),
+  // outra tela: ampliar e congelar são da tela de antes; a tinta de cada tela fica guardada com ela
+  'tela.escolher': async p => {
+    lerTelas(await ponte.telas());
+    if (p.tela === undefined && S.telas.length < 2) throw new Error('só há uma tela ligada (ligue o projetor no modo estender)');
+    const n = p.tela ?? (S.tela % S.telas.length) + 1;
+    if (n > S.telas.length) throw new Error(S.telas.length < 2 ? 'só há uma tela ligada' : `só há ${S.telas.length} telas`);
+    if (S.ampliado) await camada('ampliar', false);
+    if (S.congelado) await camada('congelar', false);
+    lerTelas(await ponte.mudarTela(n));
+    S.chaveTela = S.telas[n - 1].nome;
+    await camada('tela', S.chaveTela);
+  },
+  'captura.salvar': async () => { await soltarLaco(); return ponte.salvar(false); },
   'captura.mandar_ao_giz': async () => {
+    await soltarLaco();
     const r = await ponte.salvar(true);
     // o Giz abriu atrás do anotador: a tinta já está no quadro, sai da tela (dá para desfazer) e a barra recolhe
     if (r.giz) { await camada('limpar'); await recolher(true); }
     return r;
   },
   'captura.ler': p => ponte.capturar(p.largura_max ?? 1280),
+  'captura.copiar': async () => { await soltarLaco(); return ponte.copiar(); },
+  'selecao.laco': async p => {
+    if (S.ferramenta !== 'laco') { S.ferramenta = 'laco'; await camada('ferramenta', 'laco'); }
+    await camada('selecao', { acao: 'laco', pontos: p.pontos });
+  },
+  'selecao.mover': p => camada('selecao', { acao: 'mover', dx: p.dx, dy: p.dy }),
+  'selecao.apagar': (p, ctx) => (ctx.origem === 'atalho' && !S.selecionados ? null : camada('selecao', { acao: 'apagar' })),
+  'selecao.cor': p => camada('selecao', { acao: 'cor', cor: p.cor }),
   'texto.escrever': p => camada('adicionar', [{ tipo: 'texto', ...p }]),
   'numero.carimbar': p => camada('adicionar', [{ tipo: 'numero', ...p }]),
   'correcao.carimbar': p => camada('adicionar', [{ tipo: 'correcao', ...p }]),
@@ -290,6 +360,7 @@ const EXEC = {
   'comandos.listar': () => listarComandos(),
   // Esc nunca fecha (perderia os desenhos): desfaz um passo de cada vez, do mais "por cima" ao mais simples
   'modo.voltar_um_passo': async (p, ctx) => {
+    if (S.selecionados) return camada('selecao', { acao: 'soltar' });
     if (S.ampliado) return EXEC['tela.ampliar']({ modo: 'desligar' }, ctx);
     if (S.congelado) return EXEC['tela.congelar']({ ligado: false }, ctx);
     if (S.quadro !== 'tela') return EXEC['quadro.alternar']({ quadro: 'tela' }, ctx);
@@ -311,7 +382,7 @@ const EXEC = {
 
 // escolhas que valem para a próxima vez; a ferramenta não entra (o programa abre sempre na caneta)
 const preferencias = () => ({ cor: S.cor, espessura: S.espessura, seta: S.seta, setaDupla: S.setaDupla, cota: S.cota,
-  preencher: S.preencher, cores: S.cores });
+  preencher: S.preencher, cores: S.cores, canetas: S.canetas, botaoCaneta: S.botaoCaneta });
 let ultimasPreferencias = '';
 function guardarPreferencias() {
   const j = JSON.stringify(preferencias());
@@ -329,6 +400,9 @@ async function aplicarPreferencias(p) {
   await camada('seta', { ponta: S.seta, dupla: S.setaDupla });
   if (COTAS.includes(p.cota)) { S.cota = p.cota; await camada('cota', S.cota); }
   if (['nada', 'translucido', 'cheio'].includes(p.preencher)) { S.preencher = p.preencher; await camada('preencher', S.preencher); }
+  if (Array.isArray(p.canetas) && p.canetas.length === S.canetas.length && p.canetas.every(c => c && ['caneta', 'marca'].includes(c.ferramenta)
+    && cor(c.cor) && ESPESSURAS[c.espessura])) S.canetas = p.canetas.map(c => ({ ferramenta: c.ferramenta, cor: c.cor.toLowerCase(), espessura: c.espessura }));
+  if (BOTAO_DA_CANETA.includes(p.botaoCaneta)) { S.botaoCaneta = p.botaoCaneta; await camada('botao', S.botaoCaneta); }
   ultimasPreferencias = JSON.stringify(preferencias());
   render();
 }
@@ -337,7 +411,8 @@ function estadoPublico() {
     cor: S.cor, espessura: S.espessura, quadro: S.quadro, preencher: S.preencher, ponta_da_seta: S.seta, seta_dupla: S.setaDupla, tipo_de_cota: S.cota, regua: S.escala, ultima_medida: S.ultimaMedida,
     cores: S.cores, tinta_some: S.some,
     barra_recolhida: S.recolhido, congelado: S.congelado, ampliado: S.ampliado, desenhos: S.tracos,
-    pode_desfazer: S.desfazer, pode_refazer: S.refazer, tela: { largura: S.largura, altura: S.altura } };
+    pode_desfazer: S.desfazer, pode_refazer: S.refazer, selecionados: S.selecionados, canetas: S.canetas,
+    botao_da_caneta: S.botaoCaneta, tela: { largura: S.largura, altura: S.altura, numero: S.tela, telas: S.telas.length || 1 } };
 }
 const argsDe = b => JSON.parse(b.dataset.args || '{}');
 // a lista de fora traz também os botões e os atalhos, e o que estiver fora do registro (o teste exige lista vazia)
@@ -387,6 +462,27 @@ window.tecla = k => {
 function render() {
   const marca = (sel, f) => document.querySelectorAll(sel).forEach(b => b.classList.toggle('ativo', f(argsDe(b))));
   marca('[data-cmd="ferramenta.escolher"]', a => a.ferramenta === S.ferramenta);
+  const NOME_ESP = { fina: 'fina', media: 'média', grossa: 'grossa' };
+  document.querySelectorAll('.pena').forEach(b => {
+    const i = argsDe(b).posicao, c = S.canetas[i - 1];
+    // o desenho de uma caneta (ou de um marca-texto) pintado na cor dela, com o risco embaixo na grossura dela;
+    // a cor já foi conferida (#rrggbb) antes de entrar aqui
+    const grossura = { fina: 1.6, media: 2.6, grossa: 3.8 }[c.espessura], contorno = claro(c.cor) ? '#555' : '#222';
+    const corpo = c.ferramenta === 'marca'
+      ? `<path d="M8.5 14.5l-3 3v2h4l2-2" fill="${c.cor}" stroke="${contorno}" stroke-width="1.2" stroke-linejoin="round"/>` +
+        `<path d="M8.5 14.5l8-8 3 3-8 8z" fill="${c.cor}" stroke="${contorno}" stroke-width="1.2" stroke-linejoin="round"/>` +
+        `<path d="M3 22.3h11" stroke="${c.cor}" stroke-width="${grossura * 1.6}" stroke-linecap="round" opacity=".55"/>`
+      : `<path d="M4 18.5l1.1-4.2L15.6 3.8a1.9 1.9 0 0 1 2.7 0l.6.6a1.9 1.9 0 0 1 0 2.7L8.4 17.6z" fill="${c.cor}" stroke="${contorno}" stroke-width="1.2" stroke-linejoin="round"/>` +
+        `<path d="M4 18.5l1.1-4.2 3.3 3.3z" fill="#f2e6cf" stroke="${contorno}" stroke-width="1"/>` +
+        `<path d="M3 22.3h11" stroke="${c.cor}" stroke-width="${grossura}" stroke-linecap="round"/>`;
+    if (b.dataset.desenho !== corpo) { b.dataset.desenho = corpo; b.innerHTML = `<svg viewBox="0 0 24 24">${corpo}</svg>`; }
+    b.classList.toggle('ativo', S.pena === i);
+    b.title = `Caneta pronta ${i} (F${i + 1}): ${c.ferramenta === 'marca' ? 'marca-texto' : 'caneta'} ${NOME_ESP[c.espessura]}. ` +
+      'Com ela escolhida, mudar a cor ou a espessura muda a própria caneta (fica guardado)';
+  });
+  $('btTela').classList.toggle('oculto', S.telas.length < 2);
+  $('btTela').title = `Tela ${S.tela} de ${S.telas.length} (Y): toque para levar a tinta e a barra para a tela ${S.tela % (S.telas.length || 1) + 1}` +
+    ' (o projetor). Cada tela guarda a sua tinta';
   document.querySelectorAll('[data-cmd="cor.posicao"]').forEach(b => {
     const i = argsDe(b).posicao, c = S.cores[i - 1], ativa = c === S.cor;
     b.style.background = c;   // CSSOM: a CSP só bloqueia style="" escrito no HTML
@@ -440,7 +536,8 @@ document.querySelectorAll('[data-cmd]').forEach(b => b.addEventListener('click',
   // segundo toque numa ferramenta já escolhida: troca a opção dela (ex.: ponta da seta)
   const f = argsDe(b).ferramenta, pos = argsDe(b).posicao;
   const outra = b.dataset.cmd === 'ferramenta.escolher' && f === S.ferramenta ? DE_NOVO[f]
-    : b.dataset.cmd === 'cor.posicao' && S.cores[pos - 1] === S.cor ? ['cor.trocar', { posicao: pos }] : null;
+    : b.dataset.cmd === 'cor.posicao' && S.cores[pos - 1] === S.cor && !(S.ferramenta === 'laco' && S.selecionados)
+      ? ['cor.trocar', { posicao: pos }] : null;
   try { await (outra ? executar(outra[0], outra[1], 'botao') : executar(b.dataset.cmd, argsDe(b), 'botao')); }
   catch (e) { aviso(e.message); }
   finally { b.classList.remove('ocupado'); }
@@ -471,6 +568,13 @@ render();
 // abre com as escolhas da última vez (cor, espessura, tipos de seta e de cota, preenchimento e cores das bolinhas);
 // a camada pode ter terminado de abrir antes desta página e o primeiro aviso dela se perdeu: pede o estado de novo
 aplicarPreferencias(window.CONFIG?.preferencias).catch(() => {}).finally(() => camada('estado').catch(() => {}));
+// a tinta é guardada por tela; o botão de tela só aparece com mais de uma ligada (o projetor pode chegar depois)
+ponte?.telas().then(t => { lerTelas(t); S.chaveTela = S.telas[S.tela - 1]?.nome ?? 'tela 1'; return camada('tela', S.chaveTela); }).catch(() => {});
+setInterval(() => ponte?.telas().then(t => {
+  lerTelas(t);
+  const nome = S.telas[S.tela - 1]?.nome;
+  if (S.chaveTela && nome && nome !== S.chaveTela) executar('tela.escolher', { tela: S.tela }, 'atalho').catch(() => {});
+}).catch(() => {}), 3000);
 </script>
 </body>
 </html>

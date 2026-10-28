@@ -23,12 +23,12 @@ professor para as próprias aulas com mesa digitalizadora; funciona também com 
 
 <p align="center"><img src="docs/img/uso-slide.png" alt="Slide de física anotado com o Giz na Tela: título destacado com marca-texto, itens numerados, fórmula circulada com visto, seta até o bloco e texto explicativo; a barra de ferramentas fica à direita" width="860"></p>
 
-### ⬇ Qual arquivo baixar? (versão 1.1.0)
+### ⬇ Qual arquivo baixar? (versão 1.2.0)
 
 | Para quê | Baixar |
 |---|---|
-| **Instalar no computador (Windows)** | [**Instalar-GizNaTela-1.1.0.exe**](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.1.0/Instalar-GizNaTela-1.1.0.exe) |
-| Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.1.0-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.1.0/GizNaTela-1.1.0-portatil.zip) |
+| **Instalar no computador (Windows)** | [**Instalar-GizNaTela-1.2.0.exe**](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.2.0/Instalar-GizNaTela-1.2.0.exe) |
+| Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.2.0-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.2.0/GizNaTela-1.2.0-portatil.zip) |
 
 Se o Windows avisar "o Windows protegeu o computador", clique em **Mais informações → Executar assim mesmo** (o
 programa é gratuito e não tem assinatura paga). A conferência dos arquivos fica na
@@ -69,12 +69,20 @@ onde a barra ficou.</td>
 - **Formas:** reta, seta, retângulo e elipse (Shift: 15 em 15 graus, quadrado, círculo), com preenchimento
   translúcido (destaca) ou cheio (tapa a resposta).
 - **Texto, numeração (1, 2, 3...), visto e X** para corrigir exercícios na tela.
+- **Laço:** contorne vários traços, formas e textos e arraste o grupo, troque a cor dele ou apague de uma vez. A
+  **mão** move um objeto só.
+- **Canetas prontas:** três canetas com a sua cor, espessura e tipo (caneta ou marca-texto), trocadas num toque.
+- **Shift** deixa reto o traço da caneta e do marca-texto.
 - **Holofote e lupa.**
 - **Congelar a tela** (um vídeo parado enquanto você explica) e **ampliar** um ponto para escrever em cima.
 - **Tinta que some** sozinha em 3 segundos, para apontar sem sujar a tela.
-- **Salvar** a tela com a tinta como imagem (`Documentos\Giz na Tela\capturas`) ou **mandar ao
+- **Projetor no modo estender:** um toque leva a tinta e a barra para o projetor e traz de volta; cada tela guarda a
+  sua tinta.
+- **Copiar** a tela com a tinta (Ctrl+C) para colar num documento ou numa prova, **salvar** como imagem
+  (`Documentos\Giz na Tela\capturas`) ou **mandar ao
   [Giz Livre](https://github.com/HeraldoAntunes/giz-livre)** como quadro novo (abre o Giz se estiver fechado).
 - **Fechar com desenho na tela** pede um segundo toque no X, para não perder a aula sem querer.
+- **Botão lateral da caneta** (experimental): enquanto apertado, vira borracha, marca-texto, reta, mão ou laço.
 - Seis cores, três espessuras e atalhos de teclado para tudo (lista completa na ajuda).
 
 ## Comandos para tudo: atalhos, testes e agentes de IA
@@ -101,8 +109,8 @@ A mesma aba mostra o trecho pronto para a configuração do assistente. Detalhes
 - Mesa digitalizadora: para a pressão funcionar, ligue **"Usar Windows Ink"** no painel de ajustes da mesa. Testado no
   Windows 11 com mesa digitalizadora de caneta.
 
-Limitação conhecida: a camada cobre só o monitor principal. Com projetor no modo "estender", escreva na tela principal
-(ou use o modo "duplicar").
+Com projetor no modo "estender", a tinta fica numa tela por vez: o botão de tela da barra (tecla Y) troca de uma para
+a outra. Escrever nas duas ao mesmo tempo ainda não dá.
 
 ## Perguntas frequentes
 
@@ -121,7 +129,8 @@ voltar a escrever, **Ctrl+Alt+F** de qualquer programa.
 mesa, funciona no Giz na Tela, com pressão. Sem o Windows Ink ela desenha como mouse, com o traço sempre igual; o
 próprio programa lembra disso no primeiro traço.
 
-**E com projetor?** No modo "duplicar" funciona normalmente. No modo "estender", a camada cobre só a tela principal.
+**E com projetor?** No modo "duplicar" funciona normalmente. No modo "estender", aparece na barra o botão de tela
+(tecla Y): um toque leva a tinta e a barra para o projetor, outro traz de volta, e cada tela guarda a sua tinta.
 
 **Posso perder a aula sem querer?** O **Esc** nunca fecha nem apaga: volta um passo de cada vez. O X de fechar, com
 desenho na tela, pede um segundo toque. **Ctrl+Z** desfaz, inclusive o "Limpar". Para guardar, use **Salvar** (imagem)

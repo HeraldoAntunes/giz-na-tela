@@ -3,9 +3,9 @@
 // MCP chegam todos por aqui: a barra executa (ela guarda o estado dos botões) e a ajuda lê esta lista para mostrar
 // os atalhos. Comando novo entra primeiro aqui; o teste confere que cada um tem quem o execute e um teste próprio.
 (() => {
-const FERRAMENTAS = ['caneta', 'marca', 'borracha', 'mover', 'reta', 'seta', 'cota', 'medir', 'retangulo', 'elipse', 'texto', 'numero', 'visto',
+const FERRAMENTAS = ['caneta', 'marca', 'borracha', 'mover', 'laco', 'reta', 'seta', 'cota', 'medir', 'retangulo', 'elipse', 'texto', 'numero', 'visto',
   'xis', 'holofote', 'lupa'];
-const NOME_FERRAMENTA = { caneta: 'Caneta', marca: 'Marca-texto', borracha: 'Borracha', mover: 'Mover (mão)', reta: 'Reta', seta: 'Seta', cota: 'Cota', medir: 'Medir',
+const NOME_FERRAMENTA = { caneta: 'Caneta', marca: 'Marca-texto', borracha: 'Borracha', mover: 'Mover (mão)', laco: 'Laço', reta: 'Reta', seta: 'Seta', cota: 'Cota', medir: 'Medir',
   retangulo: 'Retângulo', elipse: 'Elipse', texto: 'Texto', numero: 'Numeração', visto: 'Visto', xis: 'X',
   holofote: 'Holofote', lupa: 'Lupa' };
 // cores de fábrica da barra, na ordem das bolinhas (o verde é a principal); o professor pode trocar cada uma
@@ -16,6 +16,13 @@ const POSICAO = { tipo: 'numero', min: 1, max: CORES.length, inteiro: true, desc
 const COTAS = ['setas', 'tracos'];
 const TIPOS_DE_COTA = ['setas', 'medida', 'auto', 'tracos'];
 const ESPESSURAS = { fina: 2, media: 4, grossa: 8 };
+// canetas prontas de fábrica: cor, espessura e tipo juntos, trocados num toque; o professor guarda as suas por cima
+const CANETAS = [{ ferramenta: 'caneta', cor: '#e53935', espessura: 'fina' },
+  { ferramenta: 'caneta', cor: '#1e6fd9', espessura: 'media' }, { ferramenta: 'marca', cor: '#f9c80e', espessura: 'grossa' }];
+const PENA = { tipo: 'numero', min: 1, max: CANETAS.length, inteiro: true, descricao: `caneta pronta (1 a ${CANETAS.length})` };
+// o que o botão lateral da caneta faz enquanto está apertado (experimental: depende do driver da mesa)
+const BOTAO_DA_CANETA = ['nada', 'borracha', 'marca', 'reta', 'mover', 'laco'];
+const MOVIMENTO = { tipo: 'numero', min: -20000, max: 20000 };
 
 // tipos de parâmetro: a mesma validação vale para o clique, o atalho e o pedido de fora (que não é confiável)
 const X = { tipo: 'numero', min: -20000, max: 20000, descricao: 'px a partir da esquerda da tela' };
@@ -28,7 +35,8 @@ const LIGADO = descricao => ({ tipo: 'logico', opcional: true, descricao: descri
 // volta_a_escrever: pelo botão ou atalho, sai do "Mouse livre" (escolher algo de desenho é querer desenhar)
 const COMANDOS = [
   { nome: 'ferramenta.escolher', nivel: 'agir', volta_a_escrever: true, aviso: p => `escolheu ${NOME_FERRAMENTA[p.ferramenta]}`,
-    descricao: 'Escolhe a ferramenta: caneta, marca (marca-texto), borracha, mover (a mão: arrasta um objeto), reta, seta, cota ' +
+    descricao: 'Escolhe a ferramenta: caneta, marca (marca-texto), borracha, mover (a mão: arrasta um objeto), laco ' +
+      '(contorna vários objetos para mover, apagar ou trocar a cor), reta, seta, cota ' +
       '(barras nas pontas; ao soltar, digita-se a medida), medir (cota que mede sozinha), retangulo, elipse, texto, ' +
       'numero, visto, xis, holofote (escurece em volta do ponteiro) ou lupa.',
     parametros: { ferramenta: { tipo: 'texto', valores: FERRAMENTAS } } },
@@ -43,7 +51,22 @@ const COMANDOS = [
       'abre o seletor de cores do Windows; de fora, mande a cor (#rrggbb).',
     parametros: { posicao: POSICAO, cor: { tipo: 'cor', opcional: true } } },
   { nome: 'cores.restaurar', nivel: 'agir', aviso: () => 'voltou às cores de fábrica',
-    descricao: 'Volta as bolinhas da barra às cores de fábrica (verde, vermelho, azul, amarelo, preto e branco).' },
+    descricao: 'Volta as bolinhas da barra às cores de fábrica (verde, vermelho, azul, amarelo, preto e branco) e as ' +
+      'canetas prontas às de fábrica (vermelha fina, azul média e marca-texto amarelo).' },
+  { nome: 'caneta.usar', nivel: 'agir', volta_a_escrever: true, aviso: p => `usou a caneta pronta ${p.posicao}`,
+    descricao: 'Usa uma das canetas prontas da barra: escolhe de uma vez a ferramenta (caneta ou marca-texto), a cor e ' +
+      'a espessura guardadas nela.',
+    parametros: { posicao: PENA } },
+  { nome: 'caneta.guardar', nivel: 'agir', aviso: p => `guardou a caneta pronta ${p.posicao}`,
+    descricao: 'Guarda numa caneta pronta a ferramenta, a cor e a espessura. Sem os outros parâmetros, guarda as que ' +
+      'estão escolhidas agora. Pela barra não precisa: com a caneta pronta escolhida, mudar a cor ou a espessura já ' +
+      'muda a própria caneta.',
+    parametros: { posicao: PENA, ferramenta: { tipo: 'texto', valores: ['caneta', 'marca'], opcional: true },
+      cor: { tipo: 'cor', opcional: true }, espessura: ESP } },
+  { nome: 'caneta.botao', nivel: 'agir', aviso: p => `o botão da caneta agora: ${p.acao}`,
+    descricao: 'Experimental. O que o botão lateral da caneta faz enquanto está apertado: nada (de fábrica), borracha, ' +
+      'marca, reta, mover ou laco. Ao soltar, volta a ferramenta de antes. Depende do driver da mesa enviar o botão.',
+    parametros: { acao: { tipo: 'texto', valores: BOTAO_DA_CANETA } } },
   { nome: 'espessura.escolher', nivel: 'agir', volta_a_escrever: true, aviso: p => `escolheu o traço ${p.espessura}`,
     descricao: 'Escolhe a espessura do traço: fina, media ou grossa (também muda o tamanho do texto e dos carimbos).',
     parametros: { espessura: { tipo: 'texto', valores: Object.keys(ESPESSURAS) } } },
@@ -91,6 +114,11 @@ const COMANDOS = [
     descricao: 'Modo "Mouse livre" (ligado: o clique vai para os outros programas e a tinta fica na tela) ou ' +
       '"Escrevendo" (desligado).',
     parametros: { ligado: LIGADO('true = Mouse livre') } },
+  { nome: 'tela.escolher', nivel: 'agir', aviso: p => `passou para a tela ${p.tela || 'seguinte'}`,
+    descricao: 'Leva a camada e a barra para outra tela (monitor), por exemplo o projetor no modo estender. A 1 é a ' +
+      'principal; as outras seguem da esquerda para a direita. Sem parâmetro, passa para a próxima. Cada tela guarda a ' +
+      'sua tinta: ao voltar, ela está lá.',
+    parametros: { tela: { tipo: 'numero', min: 1, max: 9, inteiro: true, opcional: true } } },
   { nome: 'barra.recolher', nivel: 'agir', aviso: () => 'recolheu ou abriu a barra',
     descricao: 'Recolhe a barra num botão pequeno (o mouse fica livre e a tinta continua) ou abre de novo.',
     parametros: { recolhida: LIGADO('true recolhe') } },
@@ -99,6 +127,9 @@ const COMANDOS = [
   { nome: 'captura.mandar_ao_giz', nivel: 'agir', desfaz: true, aviso: () => 'mandou a tela ao Giz Livre',
     descricao: 'Manda a tela com a tinta para o Giz Livre como quadro novo (abre o Giz se estiver fechado). ' +
       'Depois a tinta sai da tela (dá para desfazer) e a barra recolhe.' },
+  { nome: 'captura.copiar', nivel: 'agir', aviso: () => 'copiou a tela',
+    descricao: 'Copia a tela com a tinta (sem a barra) para a área de transferência, para colar com Ctrl+V num ' +
+      'documento, numa prova ou no e-mail.' },
   { nome: 'captura.ler', nivel: 'ler',
     descricao: 'Devolve um retrato da tela com a tinta, em PNG (base64), sem a barra. largura_max reduz a imagem.',
     parametros: { largura_max: { tipo: 'numero', min: 160, max: 3840, inteiro: true, opcional: true,
@@ -131,6 +162,18 @@ const COMANDOS = [
     descricao: 'Move o objeto que estiver no ponto (x, y) (o de cima, se houver vários) dx px para a direita e dy px ' +
       'para baixo. É o que a mão faz ao arrastar.',
     parametros: { x: X, y: Y, dx: { tipo: 'numero', min: -20000, max: 20000 }, dy: { tipo: 'numero', min: -20000, max: 20000 } } },
+  { nome: 'selecao.laco', nivel: 'agir', aviso: p => 'contornou objetos com o laço',
+    descricao: 'O laço: contorna com os pontos [x, y] (o caminho se fecha sozinho) e escolhe os objetos cujo meio fica ' +
+      'dentro. Passa para a ferramenta Laço. Depois: selecao.mover, selecao.apagar ou selecao.cor.',
+    parametros: { pontos: { tipo: 'pontos', min: 3, max: 5000 } } },
+  { nome: 'selecao.mover', nivel: 'agir', desfaz: true, aviso: () => 'moveu o que o laço pegou',
+    descricao: 'Move os objetos escolhidos pelo laço dx px para a direita e dy px para baixo (um passo do Desfazer).',
+    parametros: { dx: MOVIMENTO, dy: MOVIMENTO } },
+  { nome: 'selecao.apagar', nivel: 'agir', desfaz: true, aviso: () => 'apagou o que o laço pegou',
+    descricao: 'Apaga os objetos escolhidos pelo laço (dá para desfazer).' },
+  { nome: 'selecao.cor', nivel: 'agir', desfaz: true, aviso: () => 'trocou a cor do que o laço pegou',
+    descricao: 'Troca a cor dos objetos escolhidos pelo laço. Pela barra: com o laço, toque numa bolinha de cor.',
+    parametros: { cor: { tipo: 'cor' } } },
   { nome: 'desenho.adicionar', nivel: 'agir', desfaz: true, aviso: p => `desenhou ${p.itens.length} ${p.itens.length === 1 ? 'item' : 'itens'}`,
     descricao: 'Desenha vários itens de uma vez, num passo só do Desfazer. Cada item tem `tipo` (texto, numero, ' +
       'correcao, forma ou traco) e os campos do comando de um item (texto.escrever, numero.carimbar, ' +
@@ -138,10 +181,10 @@ const COMANDOS = [
     parametros: { itens: { tipo: 'itens', min: 1, max: 100 } } },
   { nome: 'estado.ler', nivel: 'ler',
     descricao: 'Estado do anotador: ferramenta, cor, espessura, modo, quadro, congelado, ampliado, quantidade de ' +
-      'desenhos e tamanho da tela.' },
+      'desenhos, objetos escolhidos pelo laço, canetas prontas e a tela (tamanho, número e quantas há).' },
   { nome: 'comandos.listar', nivel: 'ler', descricao: 'Lista os comandos, os atalhos de teclado e os botões da barra.' },
   { nome: 'modo.voltar_um_passo', nivel: 'agir', aviso: () => 'voltou um passo',
-    descricao: 'O que o Esc faz: desliga o ampliar, depois o congelar, depois o quadro, volta para a caneta e, já ' +
+    descricao: 'O que o Esc faz: solta o que o laço pegou, desliga o ampliar, depois o congelar, depois o quadro, volta para a caneta e, já ' +
       'na caneta, solta o mouse. Nunca fecha o anotador.' },
   { nome: 'ajuda.abrir', nivel: 'agir', aviso: () => 'abriu a ajuda', descricao: 'Abre a janela de ajuda e ajustes.' },
   { nome: 'programa.fechar', nivel: 'agir',
@@ -159,7 +202,9 @@ const ATALHOS = {
   e: ['ferramenta.escolher', { ferramenta: 'elipse' }], t: ['ferramenta.escolher', { ferramenta: 'texto' }],
   n: ['ferramenta.escolher', { ferramenta: 'numero' }], v: ['ferramenta.escolher', { ferramenta: 'visto' }],
   x: ['ferramenta.escolher', { ferramenta: 'xis' }], h: ['ferramenta.escolher', { ferramenta: 'holofote' }],
-  u: ['ferramenta.escolher', { ferramenta: 'lupa' }],
+  u: ['ferramenta.escolher', { ferramenta: 'lupa' }], w: ['ferramenta.escolher', { ferramenta: 'laco' }],
+  f2: ['caneta.usar', { posicao: 1 }], f3: ['caneta.usar', { posicao: 2 }], f4: ['caneta.usar', { posicao: 3 }],
+  y: ['tela.escolher', {}], delete: ['selecao.apagar', {}], 'ctrl+c': ['captura.copiar', {}],
   1: ['cor.posicao', { posicao: 1 }], 2: ['cor.posicao', { posicao: 2 }], 3: ['cor.posicao', { posicao: 3 }],
   4: ['cor.posicao', { posicao: 4 }], 5: ['cor.posicao', { posicao: 5 }], 6: ['cor.posicao', { posicao: 6 }],
   7: ['espessura.escolher', { espessura: 'fina' }], 8: ['espessura.escolher', { espessura: 'media' }],
@@ -240,5 +285,5 @@ function descrever(c) {
     parametros: Object.fromEntries(Object.entries(c.parametros || {}).map(([k, d]) => [k, { ...d }])) };
 }
 
-window.GizTela = { COTAS, COMANDOS, POR_NOME, ATALHOS, ATALHO_GLOBAL, DE_NOVO, CORES, ESPESSURAS, FERRAMENTAS, NOME_FERRAMENTA, validar, descrever };
+window.GizTela = { CANETAS, BOTAO_DA_CANETA, COTAS, COMANDOS, POR_NOME, ATALHOS, ATALHO_GLOBAL, DE_NOVO, CORES, ESPESSURAS, FERRAMENTAS, NOME_FERRAMENTA, validar, descrever };
 })();

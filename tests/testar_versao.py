@@ -28,6 +28,13 @@ if len(set(v.values())) != 1:
 else:
     print("  ok   versão igual em todos os lugares:", next(iter(v.values())), f"({', '.join(v)})")
 
+# o bloco "Qual arquivo baixar?" do README aponta para a versão de agora (na 1.1.1 ficou com os links da 1.1.0)
+leia = (RAIZ / "README.md").read_text(encoding="utf-8")
+no_readme = set(re.findall(r"GizNaTela-(\d+\.\d+\.\d+)", leia)) | set(re.findall(r"\(versão (\d+\.\d+\.\d+)\)", leia))
+if no_readme != {v["Cargo.toml"]}:
+    falhas.append(f"README: o download aponta para {sorted(no_readme)}, não para {v['Cargo.toml']}")
+print(f"  {'ok  ' if not any('README:' in f for f in falhas) else 'FALHA'} README com o download da versão de agora")
+
 # créditos de ideias ficam neutros: nenhum nome de outro anotador nos arquivos públicos (código, páginas, README)
 # (cifrados em rot13 para que nem este teste leve os nomes à cópia pública)
 PROIBIDOS = re.compile(codecs.decode(r"cbvagbsvk|tvax|ccvax|rcvp ?cra|mbbzvg", "rot13"), re.I)

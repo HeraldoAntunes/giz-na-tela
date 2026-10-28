@@ -52,7 +52,10 @@ window.ponte = {
   dicaInk: () => inv('dica_ink_mostrada'),
   preferencias: p => inv('preferencias', { p }),
   escolherCor: atual => inv('escolher_cor', { atual }),
-  comandoNaBarra: nome => inv('comando_na_barra', { nome }),
+  comandoNaBarra: (nome, args) => inv('comando_na_barra', { nome, args: args ?? {} }),
+  copiar: () => inv('copiar'),
+  telas: () => inv('telas'),
+  mudarTela: numero => inv('mudar_tela', { numero }),
 };"#;
 
 pub fn js(app: &AppHandle, janela: &str, codigo: &str) {
@@ -89,8 +92,8 @@ fn responder(estado: State<Estado>, id: u64, r: Value) {
 }
 
 // a barra só pode pedir à camada as funções desta lista; o valor vai serializado em JSON, nunca colado como código
-const DA_CAMADA: [&str; 19] = ["estado", "seta", "cota", "escala", "mover", "cor", "ferramenta", "espessura", "desfazer", "refazer", "limpar", "quadro", "some",
-    "preencher", "congelar", "ampliar", "aviso", "adicionar", "escrevendo"];
+const DA_CAMADA: [&str; 22] = ["estado", "seta", "cota", "escala", "mover", "cor", "ferramenta", "espessura", "desfazer", "refazer", "limpar", "quadro", "some",
+    "preencher", "congelar", "ampliar", "aviso", "adicionar", "escrevendo", "tela", "botao", "selecao"];
 #[tauri::command]
 async fn camada(app: AppHandle, nome: String, valor: Value) -> Result<Value, String> {
     if !DA_CAMADA.contains(&nome.as_str()) {
@@ -122,7 +125,7 @@ fn fixar(app: AppHandle, sim: bool) -> bool {
 }
 
 // recolher: a barra encolhe para o botão do giz, presa à direita de onde estava; abrir faz o caminho de volta
-const BARRA: (f64, f64) = (132.0, 544.0);   // uma fileira a mais para a cota
+const BARRA: (f64, f64) = (132.0, 640.0);   // fileiras das canetas prontas (com o rótulo) e de tela/copiar
 const BOTAO: f64 = 56.0;
 fn deslocamento_do_botao(k: f64) -> i32 { ((BARRA.0 - BOTAO) * k) as i32 }
 #[tauri::command]
@@ -166,6 +169,66 @@ async fn congelar(app: AppHandle) -> Result<String, String> {
 #[tauri::command]
 async fn salvar(app: AppHandle, giz: bool) -> Result<Value, String> {
     tauri::async_runtime::spawn_blocking(move || captura::salvar(&app, giz)).await.map_err(|e| e.to_string())?
+}
+#[tauri::command]
+async fn copiar(app: AppHandle) -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(move || captura::copiar(&app)).await.map_err(|e| e.to_string())?
+}
+
+// ---- telas (monitores): a camada fica numa tela por vez; trocar leva a camada e a barra para a outra (o projetor) ----
+// a 1 é a principal; as outras seguem da esquerda para a direita, como o Windows as mostra
+fn telas_em_ordem(app: &AppHandle) -> Vec<tauri::Monitor> {
+    let principal = app.primary_monitor().ok().flatten().map(|m| *m.position());
+    let mut v = app.available_monitors().unwrap_or_default();
+    v.sort_by_key(|m| (Some(*m.position()) != principal, m.position().x, m.position().y));
+    v
+}
+// a tela de agora é a que contém o meio da camada
+fn tela_atual(app: &AppHandle, lista: &[tauri::Monitor]) -> usize {
+    let meio = app.get_webview_window("camada").and_then(|w| Some((w.outer_position().ok()?, w.outer_size().ok()?)))
+        .map(|(p, t)| (p.x + t.width as i32 / 2, p.y + t.height as i32 / 2));
+    meio.and_then(|(x, y)| lista.iter().position(|m| {
+        let (p, t) = (m.position(), m.size());
+        x >= p.x && y >= p.y && x < p.x + t.width as i32 && y < p.y + t.height as i32
+    })).map(|i| i + 1).unwrap_or(1)
+}
+fn descrever_telas(app: &AppHandle) -> Value {
+    let lista = telas_em_ordem(app);
+    let atual = tela_atual(app, &lista);
+    json!({ "atual": atual, "telas": lista.iter().enumerate().map(|(i, m)| json!({ "numero": i + 1,
+        "nome": m.name().cloned().unwrap_or_else(|| format!("tela {}", i + 1)), "largura": m.size().width,
+        "altura": m.size().height, "principal": i == 0 })).collect::<Vec<_>>() })
+}
+#[tauri::command]
+fn telas(app: AppHandle) -> Value { descrever_telas(&app) }
+
+// leva a camada para cobrir a tela inteira e a barra para o meio da direita dela
+fn por_na_tela(app: &AppHandle, m: &tauri::Monitor) -> Result<(), String> {
+    let (p, t, k) = (*m.position(), *m.size(), m.scale_factor());
+    let camada = app.get_webview_window("camada").ok_or("camada fechada")?;
+    // a posição primeiro: ao cruzar para uma tela de outra escala o Windows reajusta o tamanho, que vem depois
+    camada.set_position(p).map_err(|e| e.to_string())?;
+    camada.set_size(t).map_err(|e| e.to_string())?;
+    if let Some(barra) = app.get_webview_window("barra") {
+        let recolhida = *app.state::<Estado>().recolhida.lock().unwrap();
+        let dx = if recolhida { deslocamento_do_botao(k) } else { 0 };
+        let x = p.x + t.width as i32 - (148.0 * k) as i32 + dx;
+        let y = p.y + ((t.height as f64 - BARRA.1 * k) / 2.0).max(10.0 * k) as i32;
+        barra.set_position(tauri::PhysicalPosition::new(x, y)).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+#[tauri::command]
+fn mudar_tela(app: AppHandle, numero: usize) -> Result<Value, String> {
+    let lista = telas_em_ordem(&app);
+    let m = lista.get(numero.wrapping_sub(1)).ok_or(format!("não há a tela {numero} (há {})", lista.len()))?;
+    por_na_tela(&app, m)?;
+    let estado = app.state::<Estado>();
+    estado.config.lock().unwrap().tela = m.name().cloned();
+    estado.config_mudou.store(true, Ordering::Relaxed);
+    let mut r = descrever_telas(&app);
+    r["atual"] = json!(numero);   // a janela pode ainda estar terminando de mudar
+    Ok(r)
 }
 #[tauri::command]
 async fn capturar(app: AppHandle, largura: u32) -> Result<Value, String> {
@@ -212,6 +275,7 @@ fn info(app: AppHandle) -> Value {
     let estado = app.state::<Estado>();
     let cfg = estado.config.lock().unwrap().clone();
     json!({ "versao": VERSAO, "agentes": cfg.agentes, "porta": *estado.porta_api.lock().unwrap(),
+            "preferencias": cfg.preferencias,
             "dados": estado.opcoes.dados.display().to_string(),
             "capturas": captura::pasta_capturas(&app).map(|p| p.display().to_string()).unwrap_or_default(),
             "exe": std::env::current_exe().map(|p| p.display().to_string()).unwrap_or_default() })
@@ -275,11 +339,11 @@ async fn escolher_cor(app: AppHandle, atual: String) -> Option<String> {
     let dona = app.get_webview_window("barra").and_then(|w| w.hwnd().ok()).map(|h| h.0 as isize).unwrap_or(0);
     tauri::async_runtime::spawn_blocking(move || sistema::escolher_cor(dona, &atual)).await.ok().flatten()
 }
-// a ajuda só pode pedir à barra os comandos desta lista
+// a ajuda só pode pedir à barra os comandos desta lista; a barra valida os parâmetros como os de qualquer botão
 #[tauri::command]
-fn comando_na_barra(app: AppHandle, nome: String) {
-    if ["cores.restaurar"].contains(&nome.as_str()) {
-        js(&app, "barra", &format!("executar({}, {{}}, 'botao')", json!(nome)));
+fn comando_na_barra(app: AppHandle, nome: String, args: Value) {
+    if ["cores.restaurar", "caneta.botao"].contains(&nome.as_str()) && args.is_object() && args.to_string().len() < 1024 {
+        js(&app, "barra", &format!("executar({}, {}, 'botao').catch(() => {{}})", json!(nome), args));
     }
 }
 
@@ -294,6 +358,18 @@ fn iniciar_js(app: &AppHandle) -> String {
 
 fn main() {
     let opcoes = Opcoes::da_linha_de_comando();
+    // uma parada inesperada fica anotada em <dados>\erros.txt: o programa não tem console para mostrá-la
+    let pasta = opcoes.dados.clone();
+    let padrao = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let t = sistema::agora();
+        let linha = format!("{}-{:02}-{:02} {:02}:{:02}:{:02} versão {VERSAO}: {info}\n", t.ano, t.mes, t.dia, t.hora,
+            t.minuto, t.segundo);
+        let _ = std::fs::create_dir_all(&pasta);
+        let _ = std::fs::OpenOptions::new().create(true).append(true).open(pasta.join("erros.txt"))
+            .and_then(|mut f| std::io::Write::write_all(&mut f, linha.as_bytes()));
+        padrao(info);
+    }));
     if opcoes.mcp {
         std::process::exit(mcp::rodar(&opcoes));
     }
@@ -314,7 +390,7 @@ fn main() {
         .manage(estado)
         .invoke_handler(tauri::generate_handler![responder, camada, estado_camada, tecla, fixar, recolher, congelar,
             salvar, capturar, fim, ajuda, info, agentes, caneta_vista, dica_ink_mostrada, preferencias, escolher_cor,
-            comando_na_barra])
+            comando_na_barra, copiar, telas, mudar_tela])
         // Ctrl+Alt+F liga e desliga o Mouse livre de qualquer programa (com ele ligado o teclado não chega aqui)
         .plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(|app, _atalho, ev| {
             if ev.state() == ShortcutState::Pressed {
@@ -371,6 +447,11 @@ fn main() {
                 .inner_size(tam.0, tam.1)
                 .initialization_script(&inicio)
                 .build()?;
+            // abre na tela da última vez, se ela ainda estiver ligada (o projetor pode ter sido desligado)
+            let lembrada = app.state::<Estado>().config.lock().unwrap().tela.clone();
+            if let Some(m) = telas_em_ordem(&h).into_iter().skip(1).find(|m| lembrada.is_some() && m.name() == lembrada.as_ref()) {
+                let _ = por_na_tela(&h, &m);
+            }
             // posição salva: só vale se ainda cair numa tela que existe (o projetor pode ter sido desligado)
             if let Some((x, y)) = salva {
                 let dx = if recolhida { deslocamento_do_botao(escala) } else { 0 };

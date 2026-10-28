@@ -2,6 +2,26 @@
 
 Numeração: só correções muda o terceiro número (1.0.0 → 1.0.1); recurso novo muda o segundo (1.0.x → 1.1.0).
 
+## [1.2.0] - 2026-10-27
+
+Pacote de melhorias. Quem já tem a 1.1.x ou a 1.0.x pode instalar por cima: os ajustes e as imagens ficam.
+
+- **Projetor e outras telas:** com o projetor no modo estender, o botão de tela (tecla Y) leva a tinta e a barra para
+  a outra tela, e traz de volta. Cada tela guarda a sua tinta. O programa abre na tela da última vez, se ela ainda
+  estiver ligada. Salvar, copiar, congelar e a lupa usam a tela onde a tinta está.
+- **Canetas prontas:** três bolinhas embaixo das espessuras, como três canetas na mesa: cada uma tem a sua cor, a
+  sua espessura e é caneta ou marca-texto. Um toque (ou F2, F3 e F4) pega a caneta; com ela na mão, mudar a cor ou a
+  espessura muda a própria caneta. "Voltar às cores de fábrica", na ajuda, volta também as canetas.
+- **Laço** (tecla W, botão novo ao lado da mão; o Congelar passou para a fileira do quadro): contorne vários
+  traços, formas e textos; depois arraste o grupo, toque numa cor para pintá-lo ou aperte Delete para apagar. Esc solta o grupo.
+- **Copiar a tela** (Ctrl+C, botão novo): a tela com a tinta vai para a área de transferência, para colar num
+  documento ou numa prova.
+- **Botão lateral da caneta** (experimental, na ajuda, aba Mesa digitalizadora): enquanto apertado, vale a borracha,
+  o marca-texto, a reta, a mão ou o laço; ao soltar, volta a ferramenta de antes. De fábrica, desligado. Com o
+  mouse, vale o botão direito.
+- **Shift na caneta e no marca-texto** deixa o traço reto (de 15 em 15 graus), como na reta.
+- A ajuda (Sobre) dizia que o retrato da tela usava uma biblioteca que saiu na 1.1.1; agora diz o certo.
+
 ## [1.1.1] - 2026-10-27
 
 Sem mudança no uso.

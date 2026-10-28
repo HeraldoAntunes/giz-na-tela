@@ -174,6 +174,179 @@ def t_espessura(a):
     a.valor("espessura.escolher", espessura="media")
 
 
+def t_canetas(a):
+    antes = a.estado()
+    a.valor("cores.restaurar")
+    e = a.valor("caneta.usar", posicao=1)
+    confere((e["ferramenta"], e["cor"], e["espessura"]) == ("caneta", "#e53935", "fina"),
+            "caneta.usar 1: caneta vermelha fina de fábrica, tudo de uma vez")
+    e = a.valor("caneta.usar", posicao=3)
+    confere((e["ferramenta"], e["cor"], e["espessura"]) == ("marca", "#f9c80e", "grossa"), "caneta.usar 3: marca-texto amarelo")
+    # caneta pronta na mão: mudar a cor e a espessura muda a própria caneta (pela barra; agentes não mexem nelas)
+    a.valor("caneta.usar", posicao=2)
+    e = a.valor("caneta.guardar", posicao=2)
+    confere(e["canetas"][1] == {"ferramenta": "caneta", "cor": "#1e6fd9", "espessura": "media"},
+            "caneta.guardar sem parâmetros guarda a escolha de agora")
+    a.valor("cor.escolher", cor="#7b1fa2")
+    confere(a.estado()["canetas"][1]["cor"] == "#1e6fd9", "um agente mudando a cor não mexe na caneta pronta")
+    e = a.valor("caneta.guardar", posicao=2, ferramenta="caneta", cor="#1e6fd9", espessura="media")
+    confere(e["canetas"][1]["cor"] == "#1e6fd9", "caneta.guardar com parâmetros")
+    confere(a.cmd("caneta.usar", posicao=4)[0] == 400, "caneta.usar recusa caneta inexistente")
+    a.valor("caneta.guardar", posicao=1, cor="#123123")
+    e = a.valor("cores.restaurar")
+    confere(e["canetas"][0]["cor"] == "#e53935", "cores.restaurar volta também as canetas de fábrica")
+    a.valor("ferramenta.escolher", ferramenta="caneta")
+    a.valor("cor.escolher", cor=antes["cor"])
+    a.valor("espessura.escolher", espessura=antes["espessura"])
+
+
+def t_botao(a):
+    confere(a.estado()["botao_da_caneta"] == "nada", "caneta.botao: de fábrica o botão lateral não faz nada")
+    confere(a.valor("caneta.botao", acao="borracha")["botao_da_caneta"] == "borracha", "caneta.botao borracha")
+    confere(a.cmd("caneta.botao", acao="lapis")[0] == 400, "caneta.botao recusa ação inexistente")
+    confere(a.estado()["ferramenta"] == "caneta", "caneta.botao não troca a ferramenta de agora")
+    a.valor("caneta.botao", acao="nada")
+
+
+def t_tela(a):
+    e = a.estado()
+    confere(e["tela"]["numero"] == 1 and e["tela"]["telas"] >= 1, f"estado.ler diz a tela ({e['tela']})")
+    if e["tela"]["telas"] < 2:
+        s_, r = a.cmd("tela.escolher", tela=2)
+        confere(s_ == 400 and "uma tela" in r["erro"], "tela.escolher com uma tela só explica que não há outra")
+        return
+    # com projetor (ou segundo monitor): a camada cobre a outra tela por alguns segundos, com o quadro branco
+    a.valor("desenho.limpar")
+    a.valor("texto.escrever", texto="tela 1", x=200, y=200)
+    a.valor("tela.escolher", tela=2)
+    time.sleep(1.0)
+    e = a.estado()
+    confere(e["tela"]["numero"] == 2 and e["desenhos"] == 0, "tela.escolher 2: a camada vai para a outra tela, sem a tinta da 1")
+    a.valor("forma.desenhar", forma="retangulo", x1=300, y1=300, x2=420, y2=400, cor="#e53935", preencher="cheio")
+    p = a.retrato("tela-2")
+    k = p[0] / a.estado()["tela"]["largura"]
+    confere(perto(pixel(p, 360 * k, 350 * k), (0xe5, 0x39, 0x35)), "o retrato sai da tela onde a tinta está")
+    a.valor("tela.escolher")
+    time.sleep(1.0)
+    e = a.estado()
+    confere(e["tela"]["numero"] == 1 and e["desenhos"] == 1, "tela.escolher sem parâmetro volta e traz a tinta da tela 1")
+    a.valor("tela.escolher", tela=2)
+    confere(a.estado()["desenhos"] == 1, "a tela 2 guardou a sua tinta")
+    a.valor("desenho.limpar")
+    a.valor("tela.escolher", tela=1)
+    time.sleep(1.0)
+    a.valor("desenho.limpar")
+    confere(a.cmd("tela.escolher", tela=9)[0] == 400, "tela.escolher recusa tela que não existe")
+
+
+# área de transferência: o teste guarda o texto que estiver lá e o devolve no fim
+def area_de_transferencia():
+    u, k = ctypes.windll.user32, ctypes.windll.kernel32
+    u.GetClipboardData.restype = k.GlobalLock.restype = ctypes.c_void_p
+    u.GetClipboardData.argtypes = k.GlobalLock.argtypes = k.GlobalUnlock.argtypes = [ctypes.c_void_p]
+    for _ in range(20):
+        if u.OpenClipboard(None):
+            return u, k
+        time.sleep(0.05)
+    raise AssertionError("área de transferência ocupada")
+
+
+def ler_texto_copiado():
+    u, k = area_de_transferencia()
+    try:
+        h = u.GetClipboardData(13)   # CF_UNICODETEXT
+        if not h:
+            return None
+        p = k.GlobalLock(h)
+        t = ctypes.wstring_at(p)
+        k.GlobalUnlock(h)
+        return t
+    finally:
+        u.CloseClipboard()
+
+
+def devolver_texto(t):
+    u, k = area_de_transferencia()
+    try:
+        u.EmptyClipboard()
+        if t is not None:
+            k.GlobalAlloc.restype = ctypes.c_void_p
+            dados = t.encode("utf-16-le") + b"\0\0"
+            h = k.GlobalAlloc(2, len(dados))
+            ctypes.memmove(k.GlobalLock(h), dados, len(dados))
+            k.GlobalUnlock(h)
+            u.SetClipboardData.argtypes = [ctypes.c_uint, ctypes.c_void_p]
+            u.SetClipboardData(13, h)
+    finally:
+        u.CloseClipboard()
+
+
+def t_copiar(a):
+    guardado = ler_texto_copiado()
+    try:
+        a.valor("forma.desenhar", forma="retangulo", x1=200, y1=200, x2=320, y2=300, cor="#1e6fd9", preencher="cheio")
+        v = a.valor("captura.copiar")
+        u, k = area_de_transferencia()
+        try:
+            h = u.GetClipboardData(8)   # CF_DIB
+            confere(bool(h), "captura.copiar põe uma imagem na área de transferência")
+            p = k.GlobalLock(h)
+            larg, alt = struct.unpack("<ii", ctypes.string_at(p + 4, 8))
+            esc = larg / a.estado()["tela"]["largura"]
+            x, y = int(260 * esc), int(250 * esc)
+            off = 40 + ((alt - 1 - y) * larg + x) * 4   # de baixo para cima, azul-verde-vermelho
+            b, g, r = ctypes.string_at(p + off, 3)
+            k.GlobalUnlock(h)
+            fmt_png = u.RegisterClipboardFormatW("PNG")
+            confere((larg, alt) == (v["largura"], v["altura"]) and perto((r, g, b), (0x1e, 0x6f, 0xd9)),
+                    "captura.copiar: a imagem tem a tinta no lugar certo")
+            confere(u.IsClipboardFormatAvailable(fmt_png), "captura.copiar também em PNG")
+        finally:
+            u.CloseClipboard()
+    finally:
+        devolver_texto(guardado)
+        a.valor("desenho.limpar")
+
+
+def t_selecao(a):
+    a.valor("desenho.limpar")
+    a.valor("forma.desenhar", forma="retangulo", x1=200, y1=200, x2=300, y2=280, cor="#1e6fd9", preencher="cheio")
+    a.valor("forma.desenhar", forma="elipse", x1=340, y1=200, x2=440, y2=280, cor="#1e6fd9", preencher="cheio")
+    a.valor("texto.escrever", texto="fica", x=900, y=600, tamanho=40)
+    s_, r = a.cmd("selecao.apagar")
+    confere(s_ == 400 and "laço" in r["erro"], "selecao.apagar sem nada escolhido explica o que fazer")
+    e = a.valor("selecao.laco", pontos=[[150, 150], [500, 150], [500, 330], [150, 330]])
+    confere(e["selecionados"] == 2 and e["ferramenta"] == "laco", "selecao.laco pega os dois de dentro e não o texto de fora")
+    a.valor("selecao.mover", dx=0, dy=300)
+    p = a.retrato("laco-mover")
+    k = p[0] / a.estado()["tela"]["largura"]
+    azul = (0x1e, 0x6f, 0xd9)
+    confere(perto(pixel(p, 250 * k, 540 * k), azul) and perto(pixel(p, 390 * k, 540 * k), azul)
+            and perto(pixel(p, 250 * k, 240 * k), (255, 255, 255)), "selecao.mover leva o grupo inteiro")
+    a.valor("selecao.cor", cor="#e53935")
+    p = a.retrato()
+    confere(perto(pixel(p, 250 * k, 540 * k), (0xe5, 0x39, 0x35)) and perto(pixel(p, 390 * k, 540 * k), (0xe5, 0x39, 0x35)),
+            "selecao.cor pinta o grupo")
+    a.valor("cor.escolher", cor="#2e9d4a")
+    p = a.retrato()
+    confere(perto(pixel(p, 250 * k, 540 * k), (0x2e, 0x9d, 0x4a)), "com o laço, a bolinha de cor pinta o grupo")
+    e = a.valor("selecao.apagar")
+    confere(e["desenhos"] == 1 and e["selecionados"] == 0, "selecao.apagar apaga só o grupo")
+    a.valor("desenho.desfazer")
+    confere(a.estado()["desenhos"] == 3, "Ctrl+Z traz o grupo apagado de volta")
+    a.valor("selecao.laco", pontos=[[150, 450], [500, 450], [500, 640], [150, 640]])
+    a.valor("modo.voltar_um_passo")
+    e = a.estado()
+    confere(e["selecionados"] == 0 and e["ferramenta"] == "laco", "Esc primeiro solta o grupo do laço")
+    a.valor("selecao.laco", pontos=[[150, 450], [500, 450], [500, 640], [150, 640]])
+    p = ler_png(Path(a.valor("captura.salvar")["arquivo"]).read_bytes())
+    confere(a.estado()["selecionados"] == 0 and perto(pixel(p, 190 * k, 540 * k), (255, 255, 255))
+            and perto(pixel(p, 230 * k, 465 * k), (255, 255, 255)),
+            "Salvar solta o grupo antes: a moldura do laço não vai para a imagem")
+    a.valor("ferramenta.escolher", ferramenta="caneta")
+    a.valor("desenho.limpar")
+
+
 def t_desfazer_refazer(a):
     n = a.estado()["desenhos"]
     a.valor("texto.escrever", texto="desfazer", x=100, y=100)
@@ -441,7 +614,7 @@ def t_estado(a):
 def t_listar(a, lista):
     confere(lista["problemas"] == [], f"comandos.listar sem problemas de registro: {lista['problemas']}")
     confere(all(c["descricao"] for c in lista["comandos"]), "todo comando tem descrição")
-    confere(len(lista["botoes"]) >= 35, f"botões da barra ligados ao registro ({len(lista['botoes'])})")
+    confere(len(lista["botoes"]) >= 40, f"botões da barra ligados ao registro ({len(lista['botoes'])})")
 
 
 def t_voltar(a):
@@ -473,6 +646,8 @@ def t_fechar(a):
     a.valor("cota.estilo", estilo="tracos")
     a.valor("cor.trocar", posicao=2, cor="#123456")
     a.valor("espessura.escolher", espessura="grossa")
+    a.valor("caneta.guardar", posicao=3, ferramenta="marca", cor="#654321", espessura="media")
+    a.valor("caneta.botao", acao="borracha")
     a.valor("texto.escrever", texto="não fecha", x=100, y=100)
     s, r = a.cmd("programa.fechar")
     confere(s == 400 and "confirmar" in r["erro"] and a.proc.poll() is None, "programa.fechar com desenho pede confirmar")
@@ -596,6 +771,9 @@ def main():
             a.valor("quadro.alternar", quadro="branco")   # fundo liso: o retrato não pega o que está aberto no PC
             testes = {
                 "ferramenta.escolher": t_ferramenta, "cor.escolher": t_cor, "espessura.escolher": t_espessura,
+                "caneta.usar": t_canetas, "caneta.guardar": t_canetas, "caneta.botao": t_botao, "tela.escolher": t_tela,
+                "captura.copiar": t_copiar, "selecao.laco": t_selecao, "selecao.mover": t_selecao,
+                "selecao.apagar": t_selecao, "selecao.cor": t_selecao,
                 "desenho.desfazer": t_desfazer_refazer, "desenho.refazer": t_desfazer_refazer, "desenho.limpar": t_limpar,
                 "quadro.alternar": t_quadro, "forma.preencher": t_preencher, "seta.estilo": t_seta, "cota.estilo": t_cota, "cor.posicao": t_cores, "cor.trocar": t_cores, "cores.restaurar": t_cores,
                 "cota.escala": t_escala, "objeto.mover": t_mover, "tinta.some": t_some,
@@ -643,6 +821,8 @@ def main():
                     == ("cheia", True, "tracos", "grossa", "#123456", "#123456"),
                     f"abre com as escolhas da última vez ({e['ponta_da_seta']}, {e['seta_dupla']}, {e['tipo_de_cota']}, "
                     f"{e['espessura']}, {e['cores'][1]}, {e['cor']})")
+            confere(e["canetas"][2] == {"ferramenta": "marca", "cor": "#654321", "espessura": "media"}
+                    and e["botao_da_caneta"] == "borracha", "abre com as canetas prontas e o botão da caneta da última vez")
             h, r = posicao_da_barra()
             confere(e["barra_recolhida"] and e["modo"] == "mouse livre", "abre recolhida como foi deixada")
             confere(r[2] - r[0] < 100 and r[0] > 120, f"recolhida: botão pequeno à direita da posição da barra ({r})")

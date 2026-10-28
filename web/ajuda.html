@@ -41,6 +41,9 @@
   dd { margin: 2px 0 0; color: var(--texto); }
   .aviso { color: var(--suave); font-size: 12.5px; margin-top: 16px; }
   #agMsg { color: var(--suave); font-size: 13px; min-height: 1.5em; }
+  .exp { font: 600 11px "Segoe UI", sans-serif; color: #8a5a00; background: #fff4d6; border-radius: 6px; padding: 1px 7px;
+         margin-left: 6px; vertical-align: 1px; }
+  select { font: 14px "Segoe UI", sans-serif; padding: 4px 6px; border: 1px solid var(--borda); border-radius: 8px; }
 </style>
 </head>
 <body>
@@ -72,11 +75,11 @@
     no botão verde para abrir a barra e voltar a escrever; arraste-o para mudar de lugar. O Giz na Tela lembra onde a
     barra ficou e se estava recolhida.</p>
   <h2>Esc volta um passo</h2>
-  <p><kbd>Esc</kbd> nunca fecha nem apaga: desliga o ampliar, depois o congelar, depois o quadro, volta para a caneta e,
+  <p><kbd>Esc</kbd> nunca fecha nem apaga: solta o grupo do laço, desliga o ampliar, depois o congelar, depois o quadro, volta para a caneta e,
     já na caneta, solta o mouse.</p>
   <h2>Ferramentas</h2>
   <p>Caneta (com a pressão da mesa), marca-texto, borracha, reta, seta, retângulo e elipse (com <kbd>Shift</kbd>, reta de
-    15 em 15 graus e quadrado ou círculo), texto, numeração (1, 2, 3...), visto e X para corrigir, holofote (escurece em
+    15 em 15 graus e quadrado ou círculo; na caneta e no marca-texto, o <kbd>Shift</kbd> deixa o traço reto), texto, numeração (1, 2, 3...), visto e X para corrigir, holofote (escurece em
     volta do ponteiro) e lupa. A roda do mouse muda o tamanho do holofote e o aumento da lupa.</p>
   <p><b>Seta:</b> cada toque a mais no botão da seta (ou <kbd>S</kbd> de novo) passa para o próximo tipo: simples com
     ponta aberta (a de fábrica), simples com ponta cheia, dupla com ponta aberta e dupla com ponta cheia. O ícone do
@@ -89,18 +92,35 @@
     digite a medida com a unidade, por exemplo <kbd>10 cm</kbd>: ela vira a régua, e o Medir passa a dar cm.</p>
   <p><b>Mover</b> (<kbd>Espaço</kbd>, a mão): toque num traço, forma, texto ou carimbo e arraste. <kbd>Ctrl</kbd>+<kbd>Z</kbd>
     devolve ao lugar.</p>
+  <p><b>Laço</b> (<kbd>W</kbd>, o botão ao lado da mão): contorne vários traços, formas e textos de uma vez. O
+    grupo fica marcado com uma moldura azul; arraste-o para outro lugar, toque numa bolinha de cor para pintá-lo ou
+    aperte <kbd>Delete</kbd> (ou o botão Apagar ao lado dele) para apagar. <kbd>Esc</kbd> solta o grupo, e
+    <kbd>Ctrl</kbd>+<kbd>Z</kbd> desfaz cada mudança.</p>
+  <h2>Canetas prontas</h2>
+  <p>Embaixo das espessuras ficam três canetas prontas, como três canetas na mesa: cada uma tem a sua cor, a sua
+    espessura e é caneta ou marca-texto. Um toque pega a caneta e troca tudo junto (ou <kbd>F2</kbd>, <kbd>F3</kbd> e
+    <kbd>F4</kbd>). Com uma caneta pronta na mão, mudar a cor ou a espessura <b>muda a própria caneta</b>, e ela fica
+    assim. Pegar outra ferramenta (seta, texto...) larga a caneta. De fábrica: vermelha fina, azul média e marca-texto
+    amarelo.</p>
   <h2>Cores</h2>
   <p>A cor de início é o verde. Toque de novo na bolinha de cor já escolhida para trocar aquela cor pelo seletor de
     cores do Windows. O Giz na Tela lembra as cores, a espessura e os tipos de seta e de cota da última vez.</p>
-  <p><button class="btn" id="coresDeFabrica">Voltar às cores de fábrica</button></p>
+  <p><button class="btn" id="coresDeFabrica">Voltar às cores e canetas de fábrica</button></p>
   <p><b>Quadro</b> cobre a tela com fundo branco ou negro. <b>Congelar</b> deixa a tela parada (um vídeo, uma animação)
     enquanto você explica. <b>Ampliar</b> aumenta um ponto da tela para escrever em cima. <b>Preenchimento</b> muda o
     retângulo e a elipse (só contorno, translúcido ou cheio, que tapa a resposta). <b>Tinta que some</b> apaga sozinha
     em 3 segundos, para apontar sem sujar a tela.</p>
+  <h2>Projetor e outras telas</h2>
+  <p>Com o projetor ligado no modo <b>estender</b>, aparece na barra o botão de <b>tela</b> (duas telinhas; tecla
+    <kbd>Y</kbd>). Um toque leva a tinta e a barra para a outra tela; outro toque traz de volta. Cada tela guarda a sua
+    tinta: ao voltar, o que estava escrito nela continua lá. O Giz na Tela abre na tela da última vez, se ela ainda
+    estiver ligada. Salvar, copiar, congelar e a lupa usam a tela onde a tinta está.</p>
   <h2>Guardar o que foi escrito</h2>
   <p><b>Salvar</b> grava a tela com a tinta como imagem em <span data-info="capturas">Documentos\Giz na Tela\capturas</span>.
     <b>Mandar ao Giz Livre</b> transforma a tela num quadro novo do Giz Livre (abre o Giz se estiver fechado); depois a
-    tinta sai da tela (<kbd>Ctrl</kbd>+<kbd>Z</kbd> traz de volta) e a barra recolhe.</p>
+    tinta sai da tela (<kbd>Ctrl</kbd>+<kbd>Z</kbd> traz de volta) e a barra recolhe. <b>Copiar</b> (<kbd>Ctrl</kbd>+<kbd>C</kbd>)
+    põe a tela com a tinta na área de transferência, para colar com <kbd>Ctrl</kbd>+<kbd>V</kbd> num documento, numa
+    prova ou no e-mail.</p>
   <h2>Fechar</h2>
   <p>O X vermelho fecha o Giz na Tela. Se houver desenho na tela, o primeiro toque só avisa; toque de novo em até 3
     segundos para fechar (os desenhos se perdem: salve antes, se quiser guardar).</p>
@@ -123,6 +143,16 @@
     Giz na Tela lembra disso no primeiro traço (no máximo três vezes).</p>
   <h2>Botões da caneta</h2>
   <p>O botão de apagar da caneta (quando a mesa o envia como borracha) apaga, como a ferramenta Borracha.</p>
+  <h2>Botão lateral da caneta <span class="exp">experimental</span></h2>
+  <p>Enquanto você segura o botão lateral da caneta, vale outra ferramenta; ao soltar, volta a de antes. Bom para
+    apagar um pedaço ou passar o marca-texto sem ir até a barra.</p>
+  <p><label>Segurando o botão lateral: <select id="botaoCaneta">
+    <option value="nada">nada (de fábrica)</option><option value="borracha">borracha</option>
+    <option value="marca">marca-texto</option><option value="reta">reta</option>
+    <option value="mover">mover (a mão)</option><option value="laco">laço</option></select></label></p>
+  <p class="aviso">Depende do driver da mesa: o botão lateral precisa chegar como "clique direito" com o "Usar Windows
+    Ink" ligado. Se nada acontecer, confira no painel da mesa o que esse botão faz. Com o mouse, vale o botão
+    direito.</p>
 </section>
 
 <section id="agentes">
@@ -157,9 +187,9 @@
     <dt>Como foi feito</dt><dd>Com apoio de assistentes de programação de inteligência artificial, usados como
       ferramenta: a concepção, as decisões, a revisão e os testes são do autor. O código é todo próprio; ideias de
       recursos vieram do uso de outros anotadores de tela em sala de aula.</dd>
-    <dt>Componentes</dt><dd>Tauri (MIT ou Apache 2.0) com o WebView2 do Windows; xcap (Apache 2.0) para o retrato da
-      tela; serde, serde_json e base64 (MIT ou Apache 2.0); e as bibliotecas de que eles dependem, com as licenças na
-      pasta do programa (THIRD-PARTY-NOTICES).</dd>
+    <dt>Componentes</dt><dd>Tauri (MIT ou Apache 2.0) com o WebView2 do Windows; png (MIT ou Apache 2.0) para gravar
+      as imagens (o retrato da tela é código próprio, com o próprio Windows); serde, serde_json e base64 (MIT ou Apache
+      2.0); e as bibliotecas de que eles dependem, com as licenças na pasta do programa (THIRD-PARTY-NOTICES).</dd>
     <dt>Giz Livre</dt><dd>O Giz na Tela é irmão do Giz Livre, a lousa digital livre do mesmo autor, e manda a tela para
       ele como quadro novo.</dd>
   </dl>
@@ -177,16 +207,19 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // a tabela de atalhos sai do registro de comandos: a ajuda nunca fica diferente do que as teclas fazem
 const { ATALHOS, POR_NOME, NOME_FERRAMENTA, CORES } = window.GizTela;
-const nomeTecla = k => k === ' ' ? '<kbd>Espaço</kbd>' : k.split('+').map(p => `<kbd>${esc({ escape: 'Esc', f1: 'F1', ctrl: 'Ctrl' }[p] || p.toUpperCase())}</kbd>`).join('+');
+const nomeTecla = k => k === ' ' ? '<kbd>Espaço</kbd>' : k === '+' ? '<kbd>+</kbd>' : k.split('+').map(p => `<kbd>${esc({ escape: 'Esc', ctrl: 'Ctrl', alt: 'Alt', delete: 'Delete' }[p] || p.toUpperCase())}</kbd>`).join('+');
 function oQueFaz(nome, a) {
   if (nome === 'ferramenta.escolher') return NOME_FERRAMENTA[a.ferramenta];
   if (nome === 'cor.posicao') return `Cor ${a.posicao} da barra` + (a.posicao === 1 ? ' (de fábrica, o verde)' : '');
   if (nome === 'espessura.escolher') return 'Traço ' + { fina: 'fino', media: 'médio', grossa: 'grosso' }[a.espessura];
+  if (nome === 'caneta.usar') return `Caneta pronta ${a.posicao}`;
   return { 'tela.ampliar': a.modo === 'mais' ? 'Ampliar mais' : a.modo === 'menos' ? 'Ampliar menos' : 'Ampliar (liga e desliga)',
     'tela.congelar': 'Congelar a tela', 'quadro.alternar': 'Quadro (branco, negro, tela)', 'forma.preencher': 'Preenchimento',
     'tinta.some': 'Tinta que some', 'tela.fixar': 'Escrevendo / Mouse livre', 'barra.recolher': 'Recolher a barra',
     'modo.voltar_um_passo': 'Voltar um passo (nunca fecha)', 'ajuda.abrir': 'Esta ajuda', 'desenho.desfazer': 'Desfazer',
-    'desenho.refazer': 'Refazer', 'captura.salvar': 'Salvar como imagem', 'captura.mandar_ao_giz': 'Mandar ao Giz Livre' }[nome]
+    'desenho.refazer': 'Refazer', 'captura.salvar': 'Salvar como imagem', 'captura.mandar_ao_giz': 'Mandar ao Giz Livre',
+    'captura.copiar': 'Copiar a tela (para colar num documento)', 'tela.escolher': 'Outra tela (o projetor)',
+    'selecao.apagar': 'Apagar o que o laço pegou' }[nome]
     || POR_NOME[nome].descricao;
 }
 $('tabAtalhos').innerHTML = Object.entries(ATALHOS).filter(([k]) => k !== '=')
@@ -198,6 +231,7 @@ function mostrar(i) {
   $('versao').textContent = 'versão ' + i.versao;
   document.querySelectorAll('[data-info]').forEach(e => { e.textContent = i[e.dataset.info] || e.textContent; });
   document.querySelectorAll('input[name=nivel]').forEach(r => { r.checked = r.value === i.agentes; });
+  $('botaoCaneta').value = i.preferencias?.botaoCaneta || 'nada';
   $('mcpConfig').textContent = JSON.stringify({ mcpServers: { 'giz-na-tela': { command: i.exe, args: ['--mcp'] } } }, null, 2);
 }
 if (ponte) ponte.info().then(mostrar);
@@ -207,7 +241,8 @@ document.querySelectorAll('input[name=nivel]').forEach(r => r.onchange = async (
     $('agMsg').textContent = { desligado: 'Agentes desligados.', ler: 'Agentes podem só ler.', agir: 'Agentes podem agir.' }[r.value];
   } catch (e) { $('agMsg').textContent = 'Não deu para mudar: ' + e; }
 });
-$('coresDeFabrica').onclick = () => { ponte?.comandoNaBarra('cores.restaurar'); $('coresDeFabrica').textContent = 'Cores de fábrica de volta'; };
+$('botaoCaneta').onchange = () => ponte?.comandoNaBarra('caneta.botao', { acao: $('botaoCaneta').value });
+$('coresDeFabrica').onclick = () => { ponte?.comandoNaBarra('cores.restaurar'); $('coresDeFabrica').textContent = 'Cores e canetas de fábrica de volta'; };
 $('copiar').onclick = async () => {
   try { await navigator.clipboard.writeText($('mcpConfig').textContent); $('agMsg').textContent = 'Copiado.'; }
   catch { getSelection().selectAllChildren($('mcpConfig')); $('agMsg').textContent = 'Selecionado: use Ctrl+C.'; }

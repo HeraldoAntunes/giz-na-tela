@@ -6,9 +6,7 @@ use serde_json::{json, Value};
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
-// Retrato com o GDI do próprio Windows (sem biblioteca de captura): só o monitor principal, que é onde o anotador fica
-#[repr(C)]
-struct Ponto { x: i32, y: i32 }
+// Retrato com o GDI do próprio Windows (sem biblioteca de captura): a tela (monitor) onde a camada do anotador está
 #[repr(C)]
 struct Retangulo { esq: i32, topo: i32, dir: i32, base: i32 }
 #[repr(C)]
@@ -21,7 +19,7 @@ struct InfoBmp { tam: u32, largura: i32, altura: i32, planos: u16, bits: u16, co
 extern "system" {
     fn GetDC(hwnd: isize) -> isize;
     fn ReleaseDC(hwnd: isize, dc: isize) -> i32;
-    fn MonitorFromPoint(p: Ponto, flags: u32) -> isize;
+    fn MonitorFromWindow(hwnd: isize, flags: u32) -> isize;
     fn GetMonitorInfoW(monitor: isize, info: *mut InfoMonitor) -> i32;
 }
 #[link(name = "gdi32")]
@@ -42,14 +40,14 @@ extern "system" {
 // imagem em RGBA, linha a linha de cima para baixo
 pub struct Imagem { pub largura: u32, pub altura: u32, pub rgba: Vec<u8> }
 
-fn retrato_gdi() -> Result<(Imagem, f32), String> {
+fn retrato_gdi(camada: isize) -> Result<(Imagem, f32), String> {
     unsafe {
-        let m = MonitorFromPoint(Ponto { x: 0, y: 0 }, 1);  // MONITOR_DEFAULTTOPRIMARY
+        let m = MonitorFromWindow(camada, 1);  // MONITOR_DEFAULTTOPRIMARY
         let mut info = InfoMonitor { tam: std::mem::size_of::<InfoMonitor>() as u32,
             monitor: Retangulo { esq: 0, topo: 0, dir: 0, base: 0 }, trabalho: Retangulo { esq: 0, topo: 0, dir: 0, base: 0 },
             flags: 0 };
         if m == 0 || GetMonitorInfoW(m, &mut info) == 0 {
-            return Err("monitor principal não encontrado".into());
+            return Err("tela do anotador não encontrada".into());
         }
         let r = &info.monitor;
         let (l, a) = (r.dir - r.esq, r.base - r.topo);
@@ -92,7 +90,8 @@ pub fn retratar(app: &AppHandle, sem: &[&str]) -> Result<(Imagem, f32), String> 
         .filter_map(|w| w.hwnd().ok().map(|h| h.0 as isize)).collect();
     janelas.iter().for_each(|h| sistema::fora_da_captura(*h, true));
     std::thread::sleep(Duration::from_millis(150)); // o Windows aplica a exclusão no próximo quadro da tela
-    let r = retrato_gdi();
+    let camada = app.get_webview_window("camada").and_then(|w| w.hwnd().ok()).map(|h| h.0 as isize).unwrap_or(0);
+    let r = retrato_gdi(camada);
     janelas.iter().for_each(|h| sistema::fora_da_captura(*h, false));
     r
 }
@@ -129,6 +128,85 @@ fn reduzir(img: &Imagem, l: u32, a: u32) -> Imagem {
         }
     }
     Imagem { largura: l, altura: a, rgba }
+}
+
+// ---- área de transferência: a tela com a tinta, para colar num documento ou numa prova ----
+#[link(name = "user32")]
+extern "system" {
+    fn OpenClipboard(dona: isize) -> i32;
+    fn CloseClipboard() -> i32;
+    fn EmptyClipboard() -> i32;
+    fn SetClipboardData(formato: u32, dados: isize) -> isize;
+    fn RegisterClipboardFormatW(nome: *const u16) -> u32;
+}
+#[link(name = "kernel32")]
+extern "system" {
+    fn GlobalAlloc(flags: u32, tam: usize) -> isize;
+    fn GlobalLock(h: isize) -> *mut u8;
+    fn GlobalUnlock(h: isize) -> i32;
+    fn GlobalFree(h: isize) -> isize;
+}
+
+// bloco de memória que a área de transferência passa a possuir (se o Windows recusar, devolvemos)
+fn bloco(dados: &[u8]) -> Result<isize, String> {
+    unsafe {
+        let h = GlobalAlloc(0x0002, dados.len());  // GMEM_MOVEABLE
+        let p = if h == 0 { std::ptr::null_mut() } else { GlobalLock(h) };
+        if p.is_null() {
+            if h != 0 { GlobalFree(h); }
+            return Err("memória insuficiente para copiar".into());
+        }
+        std::ptr::copy_nonoverlapping(dados.as_ptr(), p, dados.len());
+        GlobalUnlock(h);
+        Ok(h)
+    }
+}
+
+// Dois formatos: o bitmap clássico (CF_DIB, que todo programa cola) e o PNG (que Word, navegador e outros preferem).
+// O DIB vai de baixo para cima, o jeito que os programas antigos esperam.
+fn para_area_de_transferencia(img: &Imagem, png: &[u8]) -> Result<(), String> {
+    let (l, a) = (img.largura as usize, img.altura as usize);
+    let mut dib = Vec::with_capacity(40 + l * a * 4);
+    for v in [40u32, l as u32, a as u32] { dib.extend_from_slice(&v.to_le_bytes()); }
+    dib.extend_from_slice(&1u16.to_le_bytes());
+    dib.extend_from_slice(&32u16.to_le_bytes());
+    for v in [0u32, (l * a * 4) as u32, 0, 0, 0, 0] { dib.extend_from_slice(&v.to_le_bytes()); }
+    for y in (0..a).rev() {
+        for p in img.rgba[y * l * 4..(y + 1) * l * 4].chunks_exact(4) {
+            dib.extend_from_slice(&[p[2], p[1], p[0], 255]);
+        }
+    }
+    unsafe {
+        // outro programa pode estar com a área de transferência aberta por um instante
+        let mut aberta = false;
+        for _ in 0..20 {
+            if OpenClipboard(0) != 0 { aberta = true; break; }
+            std::thread::sleep(Duration::from_millis(25));
+        }
+        if !aberta {
+            return Err("a área de transferência está ocupada por outro programa".into());
+        }
+        EmptyClipboard();
+        let mut r = Ok(());
+        let nome_png: Vec<u16> = "PNG".encode_utf16().chain([0]).collect();
+        for (formato, dados) in [(8u32, &dib[..]), (RegisterClipboardFormatW(nome_png.as_ptr()), png)] {  // 8 = CF_DIB
+            match bloco(dados) {
+                Ok(h) => if SetClipboardData(formato, h) == 0 { GlobalFree(h); r = Err("o Windows recusou a cópia".to_string()); },
+                Err(e) => r = Err(e),
+            }
+        }
+        CloseClipboard();
+        r
+    }
+}
+
+// captura.copiar: a tela com a tinta (só a barra sai), como em Salvar, mas para a área de transferência
+pub fn copiar(app: &AppHandle) -> Result<Value, String> {
+    let (img, _) = retratar(app, &["barra", "ajuda"])?;
+    para_area_de_transferencia(&img, &png(&img)?)?;
+    let msg = "Tela copiada: cole com Ctrl+V num documento, numa prova ou no e-mail";
+    crate::js(app, "camada", &format!("camada.aviso({})", json!(msg)));
+    Ok(json!({ "largura": img.largura, "altura": img.altura, "mensagem": msg }))
 }
 
 pub fn data_url(png: &[u8]) -> String {

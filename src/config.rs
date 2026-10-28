@@ -58,12 +58,14 @@ pub struct Config {
     pub dicas_ink: u32,
     // escolhas da barra que voltam ao abrir (cor, espessura, tipos de seta e de cota, cores das bolinhas)
     pub preferencias: serde_json::Value,
+    // nome da tela (monitor) onde a camada ficou, para abrir de novo nela se ainda estiver ligada (o projetor)
+    pub tela: Option<String>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config { barra: None, recolhida: false, agentes: "desligado".into(), caneta_vista: false, dicas_ink: 0,
-            preferencias: serde_json::Value::Null }
+            preferencias: serde_json::Value::Null, tela: None }
     }
 }
 
