@@ -808,13 +808,13 @@ def main():
             a2.fechar()
 
         print("== a barra abre onde ficou, recolhida ou não")
-        a3 = Anotador(exe, dados, capturas, "agir", porta_giz, {"barra": [120, 140], "recolhida": False})
+        a3 = Anotador(exe, dados, capturas, "agir", porta_giz, {"barra": [120, 100], "recolhida": False})
         try:
             h, r = posicao_da_barra()
-            confere(h and r[:2] == (120, 140), f"a barra abre na posição gravada ({r[:2]})")
+            confere(h and r[:2] == (120, 100), f"a barra abre na posição gravada ({r[:2]})")
         finally:
             a3.fechar()
-        a4 = Anotador(exe, dados, capturas, "agir", porta_giz, {"barra": [120, 140], "recolhida": True})
+        a4 = Anotador(exe, dados, capturas, "agir", porta_giz, {"barra": [120, 100], "recolhida": True})
         try:
             e = a4.estado()
             confere((e["ponta_da_seta"], e["seta_dupla"], e["tipo_de_cota"], e["espessura"], e["cores"][1], e["cor"])

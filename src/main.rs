@@ -128,6 +128,11 @@ fn fixar(app: AppHandle, sim: bool) -> bool {
 const BARRA: (f64, f64) = (132.0, 640.0);   // fileiras das canetas prontas (com o rótulo) e de tela/copiar
 const BOTAO: f64 = 56.0;
 fn deslocamento_do_botao(k: f64) -> i32 { ((BARRA.0 - BOTAO) * k) as i32 }
+// a barra aberta cabe na tela: numa tela baixa (notebook de 768 px com zoom) a janela encolhe e o conteúdo rola
+fn barra_na_tela(m: Option<tauri::Monitor>) -> (f64, f64) {
+    let alt = m.map(|m| m.size().height as f64 / m.scale_factor()).unwrap_or(BARRA.1 + 20.0);
+    (BARRA.0, BARRA.1.min(alt - 20.0).max(200.0))
+}
 #[tauri::command]
 fn recolher(app: AppHandle, sim: bool) {
     let estado = app.state::<Estado>();
@@ -142,7 +147,8 @@ fn recolher(app: AppHandle, sim: bool) {
         let k = w.scale_factor().unwrap_or(1.0);
         if let Ok(p) = w.outer_position() {
             let dx = deslocamento_do_botao(k);
-            let (x, y, tam) = if sim { (p.x + dx, p.y, (BOTAO, BOTAO)) } else { (p.x - dx, p.y, BARRA) };
+            let aberta = barra_na_tela(w.current_monitor().ok().flatten());
+            let (x, y, tam) = if sim { (p.x + dx, p.y, (BOTAO, BOTAO)) } else { (p.x - dx, p.y, aberta) };
             // o botão pode ter sido arrastado para perto da borda: a barra aberta não pode sair da tela
             let (x, y) = dentro_do_monitor(&w, x, y, tam, k);
             let _ = w.set_size(tauri::LogicalSize::new(tam.0, tam.1));
@@ -153,8 +159,12 @@ fn recolher(app: AppHandle, sim: bool) {
 fn dentro_do_monitor(w: &tauri::WebviewWindow, x: i32, y: i32, tam: (f64, f64), k: f64) -> (i32, i32) {
     let (lx, ly) = ((tam.0 * k) as i32, (tam.1 * k) as i32);
     match w.current_monitor() {
-        Ok(Some(m)) => (x.clamp(m.position().x, m.position().x + m.size().width as i32 - lx),
-                        y.clamp(m.position().y, m.position().y + m.size().height as i32 - ly)),
+        // barra mais alta que a tela (notebook de 768 px com zoom de 125%): encosta no alto em vez de parar o programa
+        // (clamp com o limite de baixo acima do de cima é erro fatal no Rust)
+        Ok(Some(m)) => {
+            let (p, t) = (m.position(), m.size());
+            (x.min(p.x + t.width as i32 - lx).max(p.x), y.min(p.y + t.height as i32 - ly).max(p.y))
+        }
         _ => (x, y),
     }
 }
@@ -212,9 +222,11 @@ fn por_na_tela(app: &AppHandle, m: &tauri::Monitor) -> Result<(), String> {
     if let Some(barra) = app.get_webview_window("barra") {
         let recolhida = *app.state::<Estado>().recolhida.lock().unwrap();
         let dx = if recolhida { deslocamento_do_botao(k) } else { 0 };
+        let tam = barra_na_tela(Some(m.clone()));
         let x = p.x + t.width as i32 - (148.0 * k) as i32 + dx;
-        let y = p.y + ((t.height as f64 - BARRA.1 * k) / 2.0).max(10.0 * k) as i32;
+        let y = p.y + ((t.height as f64 - tam.1 * k) / 2.0).max(10.0 * k) as i32;
         barra.set_position(tauri::PhysicalPosition::new(x, y)).map_err(|e| e.to_string())?;
+        if !recolhida { barra.set_size(tauri::LogicalSize::new(tam.0, tam.1)).map_err(|e| e.to_string())?; }
     }
     Ok(())
 }
@@ -431,7 +443,8 @@ fn main() {
                 (c.recolhida, c.barra)
             };
             *app.state::<Estado>().recolhida.lock().unwrap() = recolhida;
-            let tam = if recolhida { (BOTAO, BOTAO) } else { BARRA };
+            let aberta = barra_na_tela(Some(tela.clone()));
+            let tam = if recolhida { (BOTAO, BOTAO) } else { aberta };
             // a barra pertence à camada: o Windows mantém janela "filha" sempre na frente da dona
             let barra = WebviewWindowBuilder::new(app, "barra", WebviewUrl::App("barra.html".into()))
                 .parent(&camada)?
@@ -443,7 +456,7 @@ fn main() {
                 .always_on_top(true)
                 .resizable(false)
                 .visible(false)
-                .position(larg - 148.0, ((alt - BARRA.1) / 2.0).max(10.0))   // no meio da altura, à direita
+                .position(larg - 148.0, ((alt - aberta.1) / 2.0).max(10.0))   // no meio da altura, à direita
                 .inner_size(tam.0, tam.1)
                 .initialization_script(&inicio)
                 .build()?;

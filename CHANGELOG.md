@@ -2,6 +2,14 @@
 
 Numeração: só correções muda o terceiro número (1.0.0 → 1.0.1); recurso novo muda o segundo (1.0.x → 1.1.0).
 
+## [1.2.1] - 2026-10-27
+
+Versão pequena, só a correção abaixo.
+
+- **Correção importante:** em tela baixa (notebook de 768 px com zoom de 125%), a barra nova é mais alta que a tela e
+  o programa podia fechar sozinho ao abrir a barra recolhida ou ao abrir de novo. Agora a barra encolhe para caber e
+  rola, sem esconder Desfazer, Salvar e o X.
+
 ## [1.2.0] - 2026-10-27
 
 Pacote de melhorias. Quem já tem a 1.1.x ou a 1.0.x pode instalar por cima: os ajustes e as imagens ficam.
