@@ -366,24 +366,22 @@ def t_limpar(a):
 
 
 def apertar_delete():
-    # a tecla vai direto para a página da barra (a janela do WebView2 dentro dela), sem roubar o foco do PC
+    # tecla de verdade (como o professor), com a barra na frente: mandar a mensagem direto à janela do WebView2 falha
+    # às vezes, conforme o foco (no GitHub, sempre)
     u = ctypes.windll.user32
-    u.PostMessageW.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p, ctypes.c_void_p]
-    u.FindWindowExW.restype = ctypes.c_void_p
-    u.FindWindowExW.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_wchar_p]
-    alvos = []
-    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
-    def cada(h, _):
-        nome = ctypes.create_unicode_buffer(80); u.GetClassNameW(ctypes.c_void_p(h), nome, 80)
-        if nome.value == "Chrome_RenderWidgetHostHWND": alvos.append(h)
-        return True
-    u.EnumChildWindows(ctypes.c_void_p(janela("Giz na Tela")), cada, None)
-    for h in alvos:
-        u.PostMessageW(h, 0x0100, 0x2E, 0x01530001)   # WM_KEYDOWN, VK_DELETE (tecla estendida)
-        time.sleep(0.05)   # soltar junto com o apertar faz o WebView2 descartar a tecla às vezes
-        u.PostMessageW(h, 0x0101, 0x2E, 0xC1530001)   # WM_KEYUP
+    u.SetForegroundWindow.argtypes = [ctypes.c_void_p]
+    u.GetForegroundWindow.restype = ctypes.c_void_p
+    barra = janela("Giz na Tela")
+    if not barra:
+        return False
+    u.keybd_event(0x10, 0, 0, 0); u.keybd_event(0x10, 0, 2, 0)   # Shift solto: o Windows deixa trocar a janela da frente (Alt abriria o menu)
+    u.SetForegroundWindow(barra)
+    time.sleep(0.2)
+    if u.GetForegroundWindow() != barra:
+        return False
+    u.keybd_event(0x2E, 0x53, 1, 0); time.sleep(0.05); u.keybd_event(0x2E, 0x53, 1 | 2, 0)   # Delete (tecla estendida)
     time.sleep(0.5)
-    return bool(alvos)
+    return True
 
 
 def t_delete_limpa(a):
