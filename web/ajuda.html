@@ -101,7 +101,8 @@
   <p><b>Laço</b> (<kbd>W</kbd>, o botão ao lado da mão): contorne vários traços, formas e textos de uma vez. O
     grupo fica marcado com uma moldura azul; arraste-o para outro lugar, toque numa bolinha de cor para pintá-lo ou
     aperte <kbd>Delete</kbd> (ou o botão Apagar ao lado dele) para apagar. <kbd>Esc</kbd> solta o grupo, e
-    <kbd>Ctrl</kbd>+<kbd>Z</kbd> desfaz cada mudança.</p>
+    <kbd>Ctrl</kbd>+<kbd>Z</kbd> desfaz cada mudança. Sem nada escolhido, <kbd>Delete</kbd> apertado duas vezes limpa
+    a tela inteira (o mesmo que o botão Limpar tudo).</p>
   <h2>Canetas prontas</h2>
   <p>Embaixo das espessuras ficam três canetas prontas, como três canetas na mesa: cada uma tem a sua cor, a sua
     espessura e é caneta ou marca-texto. Um toque pega a caneta e troca tudo junto (ou <kbd>F2</kbd>, <kbd>F3</kbd> e
@@ -241,7 +242,7 @@ function oQueFaz(nome, a) {
     'modo.voltar_um_passo': 'Voltar um passo (nunca fecha)', 'ajuda.abrir': 'Esta ajuda', 'desenho.desfazer': 'Desfazer',
     'desenho.refazer': 'Refazer', 'captura.salvar': 'Salvar como imagem', 'captura.mandar_ao_giz': 'Mandar ao Giz Livre',
     'captura.copiar': 'Copiar a tela (para colar num documento)', 'tela.escolher': 'Outra tela (o projetor)',
-    'selecao.apagar': 'Apagar o que o laço pegou' }[nome]
+    'selecao.apagar': 'Apagar o que o laço pegou; sem laço, limpar a tela (aperte duas vezes)' }[nome]
     || POR_NOME[nome].descricao;
 }
 $('tabAtalhos').innerHTML = Object.entries(ATALHOS).filter(([k]) => k !== '=')

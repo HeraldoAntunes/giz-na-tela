@@ -251,7 +251,7 @@ async function recolher(sim) {
 // escolher algo de desenho pelo botão ou atalho é querer desenhar; o agente não mexe no modo do professor
 async function voltarAEscrever(ctx) { if (ctx.origem !== 'agente' && S.fixado) await fixar(false); }
 
-let fimArmado = 0;
+let fimArmado = 0, limparArmado = 0;
 // Caneta pronta na mão: mudar a cor, a espessura ou trocar entre caneta e marca-texto muda a própria caneta, como uma
 // caneta de verdade. Pegar outra ferramenta (seta, texto...) larga a caneta. Os agentes não mexem nas canetas.
 function seguirPena(ctx) {
@@ -351,7 +351,15 @@ const EXEC = {
     await camada('selecao', { acao: 'laco', pontos: p.pontos });
   },
   'selecao.mover': p => camada('selecao', { acao: 'mover', dx: p.dx, dy: p.dy }),
-  'selecao.apagar': (p, ctx) => (ctx.origem === 'atalho' && !S.selecionados ? null : camada('selecao', { acao: 'apagar' })),
+  'selecao.apagar': (p, ctx) => {
+    if (ctx.origem !== 'atalho' || S.selecionados) return camada('selecao', { acao: 'apagar' });
+    // Delete sem nada escolhido: limpa a tela toda, com um segundo Delete para confirmar (como o Giz Livre, que pergunta)
+    if (!S.tracos) return null;
+    if (Date.now() - limparArmado < 3000) { limparArmado = 0; return camada('limpar'); }
+    limparArmado = Date.now();
+    aviso('Para limpar a tela inteira, aperte Delete de novo (Ctrl+Z desfaz)');
+    return null;
+  },
   'selecao.cor': p => camada('selecao', { acao: 'cor', cor: p.cor }),
   'texto.escrever': p => camada('adicionar', [{ tipo: 'texto', ...p }]),
   'numero.carimbar': p => camada('adicionar', [{ tipo: 'numero', ...p }]),

@@ -36,12 +36,12 @@ digitalizadora. Livre, gratuito e sem internet.</p>
 
 ## Qual arquivo baixar?
 
-Versão de agora: **1.3.1** ([todas as versões](https://github.com/HeraldoAntunes/giz-na-tela/releases)).
+Versão de agora: **1.3.2** ([todas as versões](https://github.com/HeraldoAntunes/giz-na-tela/releases)).
 
 | Para quê | Baixar |
 |---|---|
-| **Instalar no computador (Windows)** | [**Instalar-GizNaTela-1.3.1.exe**](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.3.1/Instalar-GizNaTela-1.3.1.exe) |
-| Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.3.1-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.3.1/GizNaTela-1.3.1-portatil.zip) |
+| **Instalar no computador (Windows)** | [**Instalar-GizNaTela-1.3.2.exe**](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.3.2/Instalar-GizNaTela-1.3.2.exe) |
+| Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.3.2-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.3.2/GizNaTela-1.3.2-portatil.zip) |
 
 Se o Windows avisar "o Windows protegeu o computador", clique em **Mais informações → Executar assim mesmo** (o
 programa é gratuito e não tem assinatura paga). A conferência dos arquivos fica na

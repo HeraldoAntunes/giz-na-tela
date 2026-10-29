@@ -362,6 +362,40 @@ def t_limpar(a):
     confere(e["desenhos"] == 0 and e["pode_desfazer"], "desenho.limpar")
     confere(a.valor("desenho.desfazer")["desenhos"] > 0, "desenho.limpar se desfaz")
     a.valor("desenho.limpar")
+    t_delete_limpa(a)
+
+
+def apertar_delete():
+    # a tecla vai direto para a página da barra (a janela do WebView2 dentro dela), sem roubar o foco do PC
+    u = ctypes.windll.user32
+    u.PostMessageW.argtypes = [ctypes.c_void_p, ctypes.c_uint, ctypes.c_void_p, ctypes.c_void_p]
+    u.FindWindowExW.restype = ctypes.c_void_p
+    u.FindWindowExW.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_wchar_p]
+    alvos = []
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    def cada(h, _):
+        nome = ctypes.create_unicode_buffer(80); u.GetClassNameW(ctypes.c_void_p(h), nome, 80)
+        if nome.value == "Chrome_RenderWidgetHostHWND": alvos.append(h)
+        return True
+    u.EnumChildWindows(ctypes.c_void_p(janela("Giz na Tela")), cada, None)
+    for h in alvos:
+        u.PostMessageW(h, 0x0100, 0x2E, 0x01530001)   # WM_KEYDOWN, VK_DELETE (tecla estendida)
+        time.sleep(0.05)   # soltar junto com o apertar faz o WebView2 descartar a tecla às vezes
+        u.PostMessageW(h, 0x0101, 0x2E, 0xC1530001)   # WM_KEYUP
+    time.sleep(0.5)
+    return bool(alvos)
+
+
+def t_delete_limpa(a):
+    a.valor("texto.escrever", texto="Delete", x=100, y=140)
+    confere(apertar_delete() and a.estado()["desenhos"] == 1, "Delete sem nada escolhido só avisa, não apaga de cara")
+    apertar_delete()
+    confere(a.estado()["desenhos"] == 0, "o segundo Delete limpa a tela")
+    confere(a.valor("desenho.desfazer")["desenhos"] == 1, "a limpeza pelo Delete se desfaz")
+    time.sleep(3.2)
+    apertar_delete()
+    confere(a.estado()["desenhos"] == 1, "Delete depois de 3 segundos volta a só avisar")
+    a.valor("desenho.limpar")
 
 
 def t_quadro(a):

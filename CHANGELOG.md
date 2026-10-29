@@ -2,6 +2,13 @@
 
 Numeração: só correções muda o terceiro número (1.0.0 → 1.0.1); recurso novo muda o segundo (1.0.x → 1.1.0).
 
+## [1.3.2] - 2026-10-28
+
+Delete que limpa a tela.
+
+- **Delete sem nada escolhido limpa a tela:** como no Giz Livre. O primeiro Delete avisa, o segundo (em até 3
+  segundos) apaga toda a tinta; Ctrl+Z desfaz. Com o laço, o Delete continua apagando só o grupo.
+
 ## [1.3.1] - 2026-10-28
 
 Fixar na barra de tarefas e texto de privacidade mais claro.
