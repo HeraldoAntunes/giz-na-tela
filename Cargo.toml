@@ -1,7 +1,7 @@
 # Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE). Anotador de tela (Tauri 2 com o WebView2)
 [package]
 name = "giz-na-tela"
-version = "1.3.2"
+version = "1.4.0"
 description = "Giz na Tela: escrever por cima de qualquer programa com a mesa digitalizadora"
 authors = ["Heraldo Antunes"]
 edition = "2021"
@@ -11,16 +11,47 @@ license = "MIT"
 name = "GizNaTela"
 path = "src/main.rs"
 
+# Variantes para isolar no VirusTotal o que dispara o alerta (gestão, 29/10/2026): o programa sem o código de
+# instalar-se (--no-default-features --features esquecer-perfil), sem apagar o Local State do WebView2
+# (--no-default-features --features instalar) e o instalador num exe próprio e pequeno, que copia o GizNaTela.exe que
+# vem ao lado (--no-default-features --features instalador-separado --bin Instalar-GizNaTela)
+[[bin]]
+name = "Instalar-GizNaTela"
+path = "src/instalar_separado.rs"
+required-features = ["instalador-separado"]
+
+# Controle da rodada 5: um exe Tauri mínimo com a configuração do Giz na Tela (uma janela, nada mais)
+[[bin]]
+name = "ControleMinimo"
+path = "src/controle_minimo.rs"
+required-features = ["controle-minimo"]
+
+[features]
+default = ["instalar", "esquecer-perfil", "avisos-dentro", "captura", "atalho-global", "api"]
+instalar = []
+esquecer-perfil = []
+instalador-separado = []
+# peças que as variantes da rodada 5 tiram, uma de cada vez
+avisos-dentro = []
+captura = []
+atalho-global = ["dep:tauri-plugin-global-shortcut"]
+api = []
+controle-minimo = []
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# sem a "compression" (brotli) do padrão: com as páginas comprimidas dentro, o exe que se instala sozinho levava 1
+# alerta de 75 no VirusTotal (Trapmine, rodada 3 de 29/10/2026), como no Bancada Livre, que deu 0 de 75 sem ela.
+# x11 e dbus do padrão são só do Linux. "custom-protocol" é o modo de produção que o tauri build liga sozinho: sem
+# ele, compilado pelo cargo, o Tauri se acha em desenvolvimento e grava no exe a pasta do projeto (caminho do PC).
+tauri = { version = "2", default-features = false, features = ["wry", "common-controls-v6", "dynamic-acl", "custom-protocol"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 png = "0.18.1"
 base64 = "0.23.1"
-tauri-plugin-global-shortcut = "2"
+tauri-plugin-global-shortcut = { version = "2", optional = true }
 
 [profile.release]
 opt-level = "s"

@@ -5,7 +5,7 @@
 // com o WinHTTP do próprio Windows (sem biblioteca a mais).
 use serde_json::{json, Value};
 use std::path::PathBuf;
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 
 const REPO: &str = "HeraldoAntunes/giz-na-tela";
 // o GitHub entrega os anexos da release por outros endereços dele; qualquer outro destino é recusado
@@ -105,7 +105,8 @@ fn notas(corpo: &str) -> String {
 fn soma_publicada(somas: &str, nome: &str) -> Option<String> {
     somas.lines().find_map(|l| {
         let (h, n) = l.trim().split_once(char::is_whitespace)?;
-        (n.trim().trim_start_matches('*') == nome && h.len() == 64).then(|| h.to_lowercase())
+        (n.trim().trim_start_matches('*') == nome && h.len() == 64 && h.bytes().all(|b| b.is_ascii_hexdigit()))
+            .then(|| h.to_lowercase())
     })
 }
 
@@ -117,14 +118,16 @@ fn mais_recente() -> Result<Versao, String> {
     let numero = v["tag_name"].as_str().ok_or("release sem número")?.trim_start_matches('v').to_string();
     let anexo = |nome: &str| v["assets"].as_array().and_then(|a| a.iter().find(|x| x["name"] == nome))
         .and_then(|x| x["browser_download_url"].as_str().map(String::from));
-    let nome = format!("Instalar-GizNaTela-{numero}.exe");
-    Ok(Versao { notas: notas(v["body"].as_str().unwrap_or("")), instalador: anexo(&nome).map(|u| (nome, u)),
-        somas: anexo("SHA256SUMS.txt"), numero })
+    // desde a 1.4.0 o instalador vai dentro de um zip (o .exe solto levava um alerta no VirusTotal, de causa não confirmada); o .exe
+    // solto das versões anteriores continua aceito
+    let instalador = [format!("Instalar-GizNaTela-{numero}.zip"), format!("Instalar-GizNaTela-{numero}.exe")]
+        .into_iter().find_map(|nome| anexo(&nome).map(|u| (nome, u)));
+    Ok(Versao { notas: notas(v["body"].as_str().unwrap_or("")), instalador, somas: anexo("SHA256SUMS.txt"), numero })
 }
 
-// Só a cópia instalada se atualiza sozinha: a portátil (portatil.txt) e a de desenvolvimento mostram a página.
-// Devolve o modo do instalador (Inno Setup) para a versão nova cair na mesma pasta: só para mim ou para todos.
-pub fn modo_instalado() -> Option<&'static str> {
+// Só a cópia instalada para a pessoa se atualiza sozinha. A portátil (portatil.txt), a de desenvolvimento e a
+// instalada para todos em Arquivos de Programas (pelo Inno Setup das versões até a 1.3.2) mostram a página.
+pub fn modo_instalado() -> Option<()> {
     let exe = std::env::current_exe().ok()?;
     let pasta = exe.parent()?;
     if pasta.join("portatil.txt").exists() {
@@ -132,13 +135,7 @@ pub fn modo_instalado() -> Option<&'static str> {
     }
     let p = pasta.to_string_lossy().to_lowercase();
     let em = |var: &str, sub: &str| std::env::var(var).ok().map(|d| format!(r"{d}\{sub}").to_lowercase());
-    if em("LOCALAPPDATA", r"Programs\Giz na Tela").as_deref() == Some(p.as_str()) {
-        Some("/CURRENTUSER")
-    } else if em("ProgramFiles", "Giz na Tela").as_deref() == Some(p.as_str()) {
-        Some("/ALLUSERS")
-    } else {
-        None
-    }
+    (em("LOCALAPPDATA", r"Programs\Giz na Tela").as_deref() == Some(p.as_str())).then_some(())
 }
 
 pub fn procurar() -> Result<Value, String> {
@@ -173,24 +170,42 @@ pub fn baixar_e_conferir(andamento: impl FnMut(u64, u64)) -> Result<(String, Pat
         let _ = std::fs::remove_dir_all(&pasta);
         return Err("o instalador gravado não confere com o SHA-256 publicado; nada foi instalado".into());
     }
-    Ok((v.numero, arq))
+    if !nome.ends_with(".zip") {
+        return Ok((v.numero, arq));
+    }
+    // o zip conferido é aberto pelo tar do próprio Windows (Windows 10 de 2018 em diante); dentro vem o instalador
+    extrair_zip(&arq, &pasta)?;
+    let exe = pasta.join(format!("Instalar-GizNaTela-{}.exe", v.numero));
+    if !exe.is_file() {
+        return Err("o zip publicado não traz o instalador; nada foi instalado".into());
+    }
+    Ok((v.numero, exe))
 }
 
-// pela ajuda, depois da confirmação do professor: o andamento aparece lá; o instalador anota o que fez num registro
+fn extrair_zip(zip: &std::path::Path, pasta: &std::path::Path) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    let tar = std::env::var_os("SystemRoot").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(r"C:\Windows"))
+        .join("System32").join("tar.exe");
+    let r = std::process::Command::new(&tar).arg("-xf").arg(zip).arg("-C").arg(pasta)
+        .creation_flags(0x0800_0000)   // CREATE_NO_WINDOW
+        .status().map_err(|e| format!("o Windows não abriu o zip ({e})"))?;
+    if !r.success() { return Err("o Windows não conseguiu abrir o zip; nada foi instalado".into()); }
+    Ok(())
+}
+
+// pela ajuda, depois da confirmação do professor: o andamento aparece lá
 pub fn instalar(app: &AppHandle) -> Result<(), String> {
-    let modo = modo_instalado()
+    modo_instalado()
         .ok_or("esta cópia não veio do instalador (é a portátil ou a de desenvolvimento): baixe a versão nova pela página")?;
     let mut ultimo = u64::MAX;
     let (_, arq) = baixar_e_conferir(|feito, total| {
         let pct = if total > 0 { feito * 100 / total } else { 0 };
         if pct != ultimo { ultimo = pct; crate::js(app, "ajuda", &format!("andamento({pct})")); }
     })?;
-    let registro = app.path().document_dir().map(|d| d.join("Giz na Tela").join("atualizacao.log")).map_err(|e| e.to_string())?;
-    let _ = std::fs::create_dir_all(registro.parent().unwrap_or(&registro));
     crate::gravar_config(app);
+    // o instalador é o próprio programa novo (src/instalador.rs): /S em silêncio, /reabrir=1 abre de novo no fim
     std::process::Command::new(&arq)
-        .args(["/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", modo, "/reabrir=1"])
-        .arg(format!("/LOG={}", registro.display()))
+        .args(["/S", "/reabrir=1"])
         .spawn().map_err(|e| format!("não consegui abrir o instalador ({e})"))?;
     let a = app.clone();
     std::thread::spawn(move || { std::thread::sleep(std::time::Duration::from_millis(800)); a.exit(0); });
@@ -218,6 +233,37 @@ mod testes {
         let s = format!("{}  Instalar-GizNaTela-1.3.0.exe\r\n{}  outro.zip\r\n", "A".repeat(64), "b".repeat(64));
         assert_eq!(soma_publicada(&s, "Instalar-GizNaTela-1.3.0.exe"), Some("a".repeat(64)));
         assert_eq!(soma_publicada(&s, "Instalar-GizNaTela-1.3.exe"), None);
+    }
+    // a soma tem de ser 64 dígitos hexadecimais: 64 letras quaisquer falham já na leitura (GNT-X07, auditoria de
+    // 30/10/2026; a conferência do arquivo baixado continua depois)
+    #[test]
+    fn soma_publicada_so_hexadecimal() {
+        let s = format!("{}  Instalar-GizNaTela-1.4.0.zip\n", "z".repeat(64));
+        assert_eq!(soma_publicada(&s, "Instalar-GizNaTela-1.4.0.zip"), None);
+        let s = format!("{}  Instalar-GizNaTela-1.4.0.zip\n", "0123456789abcdef".repeat(4));
+        assert!(soma_publicada(&s, "Instalar-GizNaTela-1.4.0.zip").is_some());
+    }
+    #[test]
+    fn abre_o_zip_do_instalador() {
+        let base = std::env::temp_dir().join(format!("giz-teste-zip-{}", std::process::id()));
+        let (de, para) = (base.join("de"), base.join("para"));
+        std::fs::create_dir_all(&de).unwrap();
+        std::fs::create_dir_all(&para).unwrap();
+        std::fs::write(de.join("Instalar-GizNaTela-9.9.9.exe"), b"conteudo de teste").unwrap();
+        let zip = base.join("Instalar-GizNaTela-9.9.9.zip");
+        let ok = std::process::Command::new("tar").arg("-a").arg("-cf").arg(&zip).arg("-C").arg(&de)
+            .arg("Instalar-GizNaTela-9.9.9.exe").status().unwrap().success();
+        assert!(ok);
+        extrair_zip(&zip, &para).unwrap();
+        assert_eq!(std::fs::read(para.join("Instalar-GizNaTela-9.9.9.exe")).unwrap(), b"conteudo de teste");
+        let _ = std::fs::remove_dir_all(&base);
+    }
+    // a mesma função existe na 1.3.2: o Sobre dela mostra este começo antes do "a release não tem o instalador"
+    #[test]
+    fn notas_da_1_4_0_avisam_quem_tem_a_1_3() {
+        let n = notas(include_str!("../docs/NOTAS-1.4.0.md"));
+        assert!(n.starts_with("ATENÇÃO, QUEM TEM A 1.3.x"), "{}", &n[..80.min(n.len())]);
+        assert!(n.contains("Instalar-GizNaTela-1.4.0.zip") && !n.contains("<p>") && !n.contains("**"));
     }
     #[test]
     fn notas_sem_imagens() {

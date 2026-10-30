@@ -32,18 +32,6 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Inno Setup 6.7.3 (a mesma versão do build local), do site oficial, com o SHA-256 conferido
-        shell: pwsh
-        run: |
-          # o Chocolatey não tem a 6.7.3; o hash é o publicado na release is-6_7_3 do jrsoftware/issrc
-          $url = 'https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe'
-          $exe = Join-Path $env:RUNNER_TEMP 'innosetup-6.7.3.exe'
-          Invoke-WebRequest $url -OutFile $exe
-          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
-          if ($hash -ne '9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732') { throw "SHA-256 do Inno Setup não confere: $hash" }
-          Start-Process $exe -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/ALLUSERS' -Wait
-          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { throw 'Inno Setup não foi instalado' }
-
       - name: Montar o programa, o instalador e o zip portátil (com os testes)
         shell: pwsh
         run: powershell -ExecutionPolicy Bypass -File installer\build.ps1

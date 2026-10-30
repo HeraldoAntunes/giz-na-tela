@@ -9,8 +9,10 @@ Uso: python tests/testar_comandos.py [--exe target/release/GizNaTela.exe] [--giz
 A camada cobre a tela por alguns segundos durante o teste (com quadro branco, para não retratar o que estiver aberto).
 """
 import argparse
+import atexit
 import base64
 import ctypes
+import http.server
 import json
 import os
 import shutil
@@ -19,6 +21,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -27,6 +30,41 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 ok_total, falhas = 0, []
+
+# Perfis de rascunho do WebView2 abertos pelos testes. O programa fechado à força (os testes de queda fazem isso de
+# propósito) deixa o WebView2 dele vivo, e dezenas de órfãos atrapalham as janelas de todo o PC. No fim de cada cópia, e
+# em qualquer saída do teste (também com erro), fecha só os processos do WebView2 desses perfis, pelo PID.
+PERFIS = []
+# pastas temporárias de dados e de capturas das cópias abertas pelos testes: apagadas no fim (também com erro);
+# várias cópias seguidas podem usar a mesma pasta (o teste de queda), por isso só no fim do teste inteiro
+PASTAS = []
+
+
+def fechar_webview_do_perfil(perfil):
+    perfil = str(perfil)
+    r = subprocess.run(["powershell", "-NoProfile", "-Command",
+                        "Get-CimInstance Win32_Process -Filter \"Name='msedgewebview2.exe'\" | "
+                        "ForEach-Object { \"$($_.ProcessId)`t$($_.CommandLine)\" }"], capture_output=True, text=True)
+    for linha in r.stdout.splitlines():
+        pid, _, cmd = linha.partition("\t")
+        if perfil.lower() in cmd.lower() and pid.strip().isdigit():
+            subprocess.run(["taskkill", "/F", "/PID", pid.strip()], capture_output=True)
+    shutil.rmtree(perfil, ignore_errors=True)
+
+
+@atexit.register
+def fechar_webview_dos_testes():
+    for perfil in PERFIS:
+        fechar_webview_do_perfil(perfil)
+    time.sleep(0.5)
+    for pasta in PASTAS:
+        shutil.rmtree(pasta, ignore_errors=True)
+
+
+def pasta_temporaria():
+    p = Path(tempfile.mkdtemp(prefix="giz-na-tela-teste-"))
+    PASTAS.append(p)
+    return p
 
 
 def confere(cond, msg):
@@ -87,8 +125,9 @@ def perto(c1, c2, tol=40):
 # ---------- o programa ----------
 class Anotador:
     # config_extra None: deixa o config.json como está (para testar um arquivo estragado)
-    def __init__(self, exe, dados, capturas, nivel="agir", porta_giz=None, config_extra={}):
-        self.exe, self.dados, self.porta = exe, Path(dados), porta_livre()
+    def __init__(self, exe, dados, capturas, nivel="agir", porta_giz=None, config_extra={}, conexao_giz=None):
+        self.exe, self.dados, self.porta, self.porta_giz = exe, Path(dados), porta_livre(), porta_giz
+        PASTAS.extend(p for p in (Path(dados), Path(capturas)) if p.is_relative_to(tempfile.gettempdir()))
         self.dados.mkdir(parents=True, exist_ok=True)
         if config_extra is not None:
             cfg = {"agentes": nivel, **config_extra}
@@ -100,7 +139,12 @@ class Anotador:
         args = [str(exe), "--dados", str(dados), "--capturas", str(capturas), "--porta-api", str(self.porta)]
         if porta_giz:
             args += ["--porta-giz", str(porta_giz)]
-        self.proc = subprocess.Popen(args)
+        if conexao_giz:
+            args += ["--conexao-giz", str(conexao_giz)]
+        # perfil do WebView2 de rascunho: o do professor não é tocado e uma medição de rede não se mistura com esta
+        self.perfil = Path(tempfile.mkdtemp(prefix="giz-perfil-"))
+        PERFIS.append(self.perfil)
+        self.proc = subprocess.Popen(args, env={**os.environ, "WEBVIEW2_USER_DATA_FOLDER": str(self.perfil)})
         for _ in range(100):
             if (self.dados / "agente" / "porta").exists():
                 break
@@ -146,6 +190,8 @@ class Anotador:
                 self.proc.wait(10)
             except Exception:
                 self.proc.kill()
+        time.sleep(1)
+        fechar_webview_do_perfil(self.perfil)
 
 
 # ---------- um teste por comando ----------
@@ -560,6 +606,23 @@ def t_giz(a, giz_info):
     if giz_info is None:
         confere(r["giz"] is False and "Giz Livre fechado" in r["mensagem"] and Path(r["arquivo"]).exists(),
                 "captura.mandar_ao_giz com o Giz fechado salva a imagem e avisa (sem abrir o Giz do professor)")
+        # outra conta do Windows com o Giz Livre novo aberto na porta: ele não dá o código pelo /api/info
+        class OutraConta(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                corpo = json.dumps({"versao": "1.16.0", "app": "giz-livre"}).encode()
+                self.send_response(200); self.send_header("Content-Length", str(len(corpo))); self.end_headers()
+                self.wfile.write(corpo)
+            def log_message(self, *_):
+                pass
+        srv = http.server.HTTPServer(("127.0.0.1", a.porta_giz), OutraConta)
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            a.valor("texto.escrever", texto="outra conta", x=200, y=260)
+            r = a.valor("captura.mandar_ao_giz")
+            confere(r["giz"] is False and "por esta conta" in r["mensagem"],
+                    f"Giz Livre de outra conta na porta: não entrega lá e pede o desta conta ({r['mensagem']})")
+        finally:
+            srv.shutdown(); srv.server_close()
         a.valor("desenho.limpar")
         return
     porta, token = giz_info
@@ -831,14 +894,20 @@ def main():
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(60):
             try:
-                tok = json.load(urllib.request.urlopen(f"http://127.0.0.1:{porta_giz}/api/info", timeout=1))["token"]
-                giz_info = (porta_giz, tok)
-                break
+                # Giz Livre novo: porta e código no conexao.json da pasta de dados; o antigo dava o código no /api/info
+                info = json.load(urllib.request.urlopen(f"http://127.0.0.1:{porta_giz}/api/info", timeout=1))
+                arq = gdados / ".agente" / "conexao.json"
+                tok = json.loads(arq.read_text(encoding="utf-8"))["token"] if arq.exists() else info.get("token")
+                if tok:
+                    giz_info = (porta_giz, tok)
+                    break
+                time.sleep(0.25)
             except OSError:
                 time.sleep(0.25)
     try:
         print("== agentes em 'agir': um teste por comando")
-        a = Anotador(exe, dados, capturas, "agir", porta_giz)
+        a = Anotador(exe, dados, capturas, "agir", porta_giz,
+                     conexao_giz=(tmp / "giz" / ".agente" / "conexao.json") if o.giz else None)
         try:
             lista = a.valor("comandos.listar")
             confere(a.estado()["cor"] == "#2e9d4a", "abre com o verde como cor de início")
@@ -920,6 +989,18 @@ def main():
             confere(r[:2] == (130, 110), f"config.json estragado: o programa usa a cópia de segurança ({r[:2]})")
         finally:
             a6.fechar()
+        # espessura com nome de propriedade herdada (__proto__) nos ajustes: não entra, nem na preferência nem nas
+        # canetas prontas (GNT-X16, auditoria de 30/10/2026)
+        ruim = {"ferramenta": "caneta", "cor": "#ff0000", "espessura": "__proto__"}
+        a7 = Anotador(exe, dados, capturas, "agir", porta_giz,
+                      {"preferencias": {"espessura": "__proto__", "canetas": [ruim, ruim, ruim]}})
+        try:
+            e = a7.estado()
+            validas = ("fina", "media", "grossa")
+            confere(e["espessura"] in validas and all(c["espessura"] in validas for c in e["canetas"]),
+                    f"espessura __proto__ nos ajustes é recusada ({e['espessura']}, {[c['espessura'] for c in e['canetas']]})")
+        finally:
+            a7.fechar()
 
         print("== níveis")
         b = Anotador(exe, dados, capturas, "ler", porta_giz)

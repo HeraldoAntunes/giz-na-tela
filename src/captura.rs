@@ -22,6 +22,7 @@ extern "system" {
     fn MonitorFromWindow(hwnd: isize, flags: u32) -> isize;
     fn GetMonitorInfoW(monitor: isize, info: *mut InfoMonitor) -> i32;
 }
+#[cfg(feature = "captura")]
 #[link(name = "gdi32")]
 extern "system" {
     fn CreateCompatibleDC(dc: isize) -> isize;
@@ -40,6 +41,7 @@ extern "system" {
 // imagem em RGBA, linha a linha de cima para baixo
 pub struct Imagem { pub largura: u32, pub altura: u32, pub rgba: Vec<u8> }
 
+#[cfg(feature = "captura")]
 fn retrato_gdi(camada: isize) -> Result<(Imagem, f32), String> {
     unsafe {
         let m = MonitorFromWindow(camada, 1);  // MONITOR_DEFAULTTOPRIMARY
@@ -82,17 +84,25 @@ fn retrato_gdi(camada: isize) -> Result<(Imagem, f32), String> {
         Ok((Imagem { largura: l as u32, altura: a as u32, rgba: px }, dpi as f32 / 96.0))
     }
 }
+// variante da rodada 5 (VirusTotal): sem o retrato da tela
+#[cfg(not(feature = "captura"))]
+fn retrato_gdi(_camada: isize) -> Result<(Imagem, f32), String> {
+    Err("esta variante não tira retrato da tela".into())
+}
 
 // Para retratar o que está EMBAIXO do anotador, as janelas pedidas saem da captura só durante o retrato; fora desse
 // instante continuam aparecendo em gravações e no compartilhamento de tela.
 pub fn retratar(app: &AppHandle, sem: &[&str]) -> Result<(Imagem, f32), String> {
     let janelas: Vec<isize> = sem.iter().filter_map(|n| app.get_webview_window(n))
         .filter_map(|w| w.hwnd().ok().map(|h| h.0 as isize)).collect();
-    janelas.iter().for_each(|h| sistema::fora_da_captura(*h, true));
+    // Windows anterior ao 10 versão 2004 recusa a exclusão: essas janelas saem escondidas só durante o retrato
+    let escondidas: Vec<isize> = janelas.iter().copied().filter(|h| !sistema::fora_da_captura(*h, true)).collect();
+    escondidas.iter().for_each(|h| sistema::esconder_janela(*h, true));
     std::thread::sleep(Duration::from_millis(150)); // o Windows aplica a exclusão no próximo quadro da tela
     let camada = app.get_webview_window("camada").and_then(|w| w.hwnd().ok()).map(|h| h.0 as isize).unwrap_or(0);
     let r = retrato_gdi(camada);
-    janelas.iter().for_each(|h| sistema::fora_da_captura(*h, false));
+    janelas.iter().for_each(|h| { sistema::fora_da_captura(*h, false); });
+    escondidas.iter().for_each(|h| sistema::esconder_janela(*h, false));
     r
 }
 
@@ -164,7 +174,7 @@ fn bloco(dados: &[u8]) -> Result<isize, String> {
 
 // Dois formatos: o bitmap clássico (CF_DIB, que todo programa cola) e o PNG (que Word, navegador e outros preferem).
 // O DIB vai de baixo para cima, o jeito que os programas antigos esperam.
-fn para_area_de_transferencia(img: &Imagem, png: &[u8]) -> Result<(), String> {
+fn para_area_de_transferencia(dona: isize, img: &Imagem, png: &[u8]) -> Result<(), String> {
     let (l, a) = (img.largura as usize, img.altura as usize);
     let mut dib = Vec::with_capacity(40 + l * a * 4);
     for v in [40u32, l as u32, a as u32] { dib.extend_from_slice(&v.to_le_bytes()); }
@@ -180,7 +190,7 @@ fn para_area_de_transferencia(img: &Imagem, png: &[u8]) -> Result<(), String> {
         // outro programa pode estar com a área de transferência aberta por um instante
         let mut aberta = false;
         for _ in 0..20 {
-            if OpenClipboard(0) != 0 { aberta = true; break; }
+            if OpenClipboard(dona) != 0 { aberta = true; break; }
             std::thread::sleep(Duration::from_millis(25));
         }
         if !aberta {
@@ -203,7 +213,9 @@ fn para_area_de_transferencia(img: &Imagem, png: &[u8]) -> Result<(), String> {
 // captura.copiar: a tela com a tinta (só a barra sai), como em Salvar, mas para a área de transferência
 pub fn copiar(app: &AppHandle) -> Result<Value, String> {
     let (img, _) = retratar(app, &["barra", "ajuda"])?;
-    para_area_de_transferencia(&img, &png(&img)?)?;
+    // a barra é a dona: com dona nula, a documentação do Windows avisa que o SetClipboardData pode falhar
+    let dona = app.get_webview_window("barra").and_then(|w| w.hwnd().ok()).map(|h| h.0 as isize).unwrap_or(0);
+    para_area_de_transferencia(dona, &img, &png(&img)?)?;
     let msg = "Tela copiada: cole com Ctrl+V num documento, numa prova ou no e-mail";
     crate::js(app, "camada", &format!("camada.aviso({})", json!(msg)));
     Ok(json!({ "largura": img.largura, "altura": img.altura, "mensagem": msg }))
@@ -270,29 +282,63 @@ pub fn salvar(app: &AppHandle, giz: bool) -> Result<Value, String> {
     Ok(r)
 }
 
-// ---- Giz Livre aberto neste PC: mesma API da página dele; o token vem de /api/info ----
+// ---- Giz Livre aberto por esta conta: mesma API da página dele ----
+// O Giz Livre anota a porta e o código em %LOCALAPPDATA%\Giz Livre\conexao.json, na pasta da conta: com duas contas
+// no mesmo PC (laboratório), cada Giz na Tela entrega no Giz Livre da própria conta. O Giz Livre antigo (até a 1.15)
+// não tem o arquivo e dá o código em /api/info; o novo só diz a versão ali.
 fn giz(porta: u16, metodo: &str, rota: &str, token: &str, tipo: &str, corpo: &[u8]) -> Result<(u16, String), String> {
     sistema::http(porta, metodo, rota, &[("X-Lousa", token)], tipo, corpo, Duration::from_secs(20))
         .map(|(s, c)| (s, String::from_utf8_lossy(&c).to_string()))
         .map_err(|e| if e == "fechado" { "Giz Livre fechado".to_string() } else { e })
 }
 
-// Giz fechado: abre o Giz instalado (só para mim ou para todos) e espera o servidor dele responder.
-// Com --porta-giz (teste com um Giz de desenvolvimento) nunca abre o Giz do professor.
-fn abrir_giz(app: &AppHandle, porta: u16) -> Result<String, String> {
-    if app.state::<Estado>().opcoes.porta_giz.is_some() {
-        return Err("Giz Livre fechado".into());
+fn conexao_anotada(app: &AppHandle) -> Option<(u16, String)> {
+    let o = &app.state::<Estado>().opcoes;
+    let arq = match (&o.conexao_giz, o.porta_giz) {
+        (Some(a), _) => a.clone(),
+        (None, Some(_)) => return None,   // teste sem Giz de desenvolvimento: nunca o arquivo do professor
+        (None, None) => std::path::PathBuf::from(std::env::var_os("LOCALAPPDATA")?).join("Giz Livre").join("conexao.json"),
+    };
+    let v: Value = serde_json::from_slice(&std::fs::read(arq).ok()?).ok()?;
+    let porta = u16::try_from(v["porta"].as_u64()?).ok()?;
+    let token = v["token"].as_str().filter(|t| !t.is_empty())?.to_string();
+    if v["pid"].as_u64().is_some_and(|p| !sistema::processo_vivo(p as u32)) {
+        return None;   // sobrou de um Giz fechado à força
+    }
+    matches!(giz(porta, "GET", "/api/info", "", "text/plain", b""), Ok((200, _))).then_some((porta, token))
+}
+
+// Err(true): algum Giz Livre respondeu, mas não é desta conta (o novo não dá o código pelo /api/info)
+fn conexao(app: &AppHandle, porta_antiga: u16) -> Result<(u16, String), bool> {
+    if let Some(c) = conexao_anotada(app) {
+        return Ok(c);
+    }
+    match giz(porta_antiga, "GET", "/api/info", "", "text/plain", b"") {
+        Ok((200, info)) => serde_json::from_str::<Value>(&info).ok()
+            .and_then(|v| v["token"].as_str().filter(|t| !t.is_empty()).map(|t| (porta_antiga, t.to_string())))
+            .ok_or(true),
+        _ => Err(false),
+    }
+}
+
+// Giz fechado nesta conta: abre o Giz instalado (só para mim ou para todos) e espera ele anotar a conexão.
+// Com --porta-giz ou --conexao-giz (teste com um Giz de desenvolvimento) nunca abre o Giz do professor.
+fn abrir_giz(app: &AppHandle, porta: u16, outra_conta: bool) -> Result<(u16, String), String> {
+    let fechado = if outra_conta { "Abra o Giz Livre por esta conta" } else { "Giz Livre fechado" };
+    let o = &app.state::<Estado>().opcoes;
+    if o.porta_giz.is_some() || o.conexao_giz.is_some() {
+        return Err(fechado.into());
     }
     let exe = [std::env::var("LOCALAPPDATA").map(|d| format!(r"{d}\Programs\Giz Livre\GizLivre.exe")),
                std::env::var("ProgramFiles").map(|d| format!(r"{d}\Giz Livre\GizLivre.exe"))]
         .into_iter().flatten().find(|c| std::path::Path::new(c).exists())
-        .ok_or("Giz Livre fechado e não achei o Giz instalado")?;
+        .ok_or(format!("{fechado} (não achei o Giz instalado)"))?;
     crate::js(app, "camada", "camada.aviso('Abrindo o Giz Livre...')");
     std::process::Command::new(&exe).spawn().map_err(|_| "não consegui abrir o Giz Livre".to_string())?;
     for _ in 0..60 {
         std::thread::sleep(Duration::from_millis(500));
-        if let Ok((200, info)) = giz(porta, "GET", "/api/info", "", "text/plain", b"") {
-            return Ok(info);
+        if let Ok(c) = conexao(app, porta) {
+            return Ok(c);
         }
     }
     Err("o Giz Livre demorou a abrir".into())
@@ -300,12 +346,10 @@ fn abrir_giz(app: &AppHandle, porta: u16) -> Result<String, String> {
 
 fn mandar_ao_giz(app: &AppHandle, png: &[u8], l: u32, a: u32, escala: f32, t: &Agora) -> Result<String, String> {
     let porta = app.state::<Estado>().opcoes.porta_giz.unwrap_or(crate::config::PORTA_GIZ);
-    let info = match giz(porta, "GET", "/api/info", "", "text/plain", b"") {
-        Ok((_, info)) => info,
-        Err(_) => abrir_giz(app, porta)?,
+    let (porta, token) = match conexao(app, porta) {
+        Ok(c) => c,
+        Err(outra_conta) => abrir_giz(app, porta, outra_conta)?,
     };
-    let token = serde_json::from_str::<Value>(&info).ok()
-        .and_then(|v| v["token"].as_str().map(String::from)).ok_or("o Giz Livre não respondeu")?;
     let (s, r) = giz(porta, "POST", "/api/assets", &token, "image/png", png)?;
     let url = serde_json::from_str::<Value>(&r).ok()
         .and_then(|v| v["url"].as_str().map(String::from)).ok_or(format!("o Giz recusou a imagem ({s})"))?;

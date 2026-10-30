@@ -1,0 +1,89 @@
+# Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE).
+# "PC limpo": num Windows novo do GitHub, monta o instalador a partir do código, instala em silêncio, abre o programa
+# e o deixa vivo por 60 s, mede as conexões de rede, tira um retrato da tela e desinstala (tests/pc_limpo.ps1). Roda no
+# Windows mais novo e no Windows Server 2022 (o mesmo núcleo do Windows 10), com rede e sem rede (o firewall da máquina
+# descartável bloqueia só o programa e o WebView2). Só pelo botão "Run workflow"; não publica nada.
+name: PC limpo
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag ou branch a testar (ex.: main)"
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+jobs:
+  pc-limpo:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, windows-2022]
+        rede: [com-rede, sem-rede]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Montar o instalador (o próprio GizNaTela.exe com o nome do instalador)
+        shell: pwsh
+        run: |
+          cargo build --release --locked
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\ins" | Out-Null
+          Copy-Item target\release\GizNaTela.exe "$env:RUNNER_TEMP\ins\Instalar-GizNaTela.exe"
+
+      - name: Instalar, abrir 60 s, medir a rede, retratar e desinstalar
+        shell: pwsh
+        run: |
+          $ins = Get-Item "$env:RUNNER_TEMP\ins\Instalar-GizNaTela.exe"
+          $extra = if ('${{ matrix.rede }}' -eq 'sem-rede') { @('-SemRede') } else { @() }
+          powershell -ExecutionPolicy Bypass -File tests\pc_limpo.ps1 -Instalador $ins.FullName -Saida "$env:RUNNER_TEMP\pc-limpo" @extra
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Guardar o retrato e as conexões
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pc-limpo-${{ matrix.os }}-${{ matrix.rede }}
+          path: ${{ runner.temp }}/pc-limpo/*
+          retention-days: 14
+          if-no-files-found: warn
+
+  # instalador próprio (src/instalador.rs): o GizNaTela.exe com o nome Instalar-GizNaTela-<versão>.exe. Antes, instala
+  # a 1.3.2 publicada (Inno Setup) para testar a migração; testa também a atualização com o programa aberto
+  instalador-proprio:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Compilar o programa
+        run: cargo build --release --locked
+
+      - name: Baixar a 1.3.2 publicada (Inno Setup) e conferir o SHA-256
+        shell: pwsh
+        run: |
+          $u = 'https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.3.2/Instalar-GizNaTela-1.3.2.exe'
+          Invoke-WebRequest $u -OutFile "$env:RUNNER_TEMP\inno-1.3.2.exe"
+          $h = (Get-FileHash "$env:RUNNER_TEMP\inno-1.3.2.exe").Hash.ToLower()
+          if ($h -ne '4d3cd24fd3ed8a1834b2f9aacc44827198846eaf97964cf139054308a415a38e') { throw "SHA-256 diferente: $h" }
+
+      - name: Migrar do Inno, instalar, atualizar com o programa aberto e desinstalar
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File tests\instalador_proprio.ps1 -Programa target\release\GizNaTela.exe -Inno "$env:RUNNER_TEMP\inno-1.3.2.exe" -Abrir
+          if ($LASTEXITCODE -ne 0) { exit 1 }

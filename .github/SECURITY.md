@@ -1,9 +1,14 @@
 # Segurança e privacidade
 
 ## Como o Giz na Tela protege o computador e os dados
-- **Funciona offline.** Não tem telemetria, contas ou anúncios, e o programa não envia nada para a internet. O único
-  endereço que ele pode abrir é a página oficial do WebView2 da Microsoft, e só se o WebView2 faltar e o usuário
-  clicar em "Sim".
+- **Funciona offline.** Não tem telemetria, contas ou anúncios, e o programa não envia nada seu para a internet. Ele
+  só se conecta em dois casos, sempre por pedido do usuário:
+  - **Procurar versão nova** (ajuda, aba Sobre): consulta a página de versões no GitHub, por HTTPS e só nos endereços
+    do GitHub. Instalar só acontece depois de confirmar, com o arquivo conferido pelo SHA-256 publicado.
+  - **Sem o WebView2:** pode abrir a página oficial do WebView2 da Microsoft, se o usuário clicar em "Sim".
+- **O componente WebView2 da Microsoft**, que desenha a janela, pode abrir sozinho uma conexão com a Microsoft. O
+  programa desliga os serviços de rede dele e evita a conexão que ele abria ao reabrir, mas só em parte das aberturas:
+  nas medições, 2 de 5 aberturas de 10 minutos ficaram sem conexão. Nada seu passa por ela, e o firewall do Windows pode bloqueá-la.
 - **Retratos da tela ficam no computador.** "Salvar" grava a imagem em `Documentos\Giz na Tela\capturas`; "Mandar ao
   Giz Livre" entrega a imagem ao Giz Livre aberto no mesmo computador (endereço local `127.0.0.1`).
 - **Agentes de IA: desligados de fábrica.** A API local só existe para programas do próprio computador e:
@@ -23,10 +28,13 @@
   - Cada anexo da release vem com uma assinatura do Sigstore (`<arquivo>.sigstore.json`), feita pelo workflow
     `assinar-release.yml` deste repositório. Para conferir (com o
     [cosign](https://docs.sigstore.dev/cosign/system_config/installation/)):
-    `cosign verify-blob --bundle Instalar-GizNaTela-<versão>.exe.sigstore.json --certificate-identity-regexp "^https://github.com/HeraldoAntunes/giz-na-tela/.github/workflows/assinar-release.yml@" --certificate-oidc-issuer https://token.actions.githubusercontent.com Instalar-GizNaTela-<versão>.exe`
-  - O programa é compilado sem compactadores, com as dependências fixadas no `Cargo.lock`, e verificado no Microsoft
-    Defender antes da publicação. O instalador só leva o instalador oficial do WebView2 se a assinatura digital dele
-    for válida e da Microsoft.
+    `cosign verify-blob --bundle Instalar-GizNaTela-<versão>.zip.sigstore.json --certificate-identity-regexp "^https://github.com/HeraldoAntunes/giz-na-tela/.github/workflows/assinar-release.yml@" --certificate-oidc-issuer https://token.actions.githubusercontent.com Instalar-GizNaTela-<versão>.zip`
+  - O programa é compilado sem compactadores, com as dependências travadas no `Cargo.lock` (`--locked`), e verificado
+    no Microsoft Defender antes da publicação (sem o Defender, o pacote não sai). O pacote "escola sem internet" só
+    leva o instalador oficial do WebView2 se a assinatura digital dele for válida e da Microsoft, e o programa confere
+    de novo antes de rodá-lo.
+  - O SHA-256 que o "Procurar versão nova" confere vem da mesma página de versões: ele prova que o arquivo chegou
+    inteiro, não que a conta do GitHub esteja segura. Quem quiser essa garantia confere a assinatura do Sigstore.
 
 ## Aviso sobre antivírus
 Programas sem assinatura digital paga podem receber o aviso "editor desconhecido" do SmartScreen. Antes de instalar,

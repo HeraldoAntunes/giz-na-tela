@@ -2,6 +2,71 @@
 
 Numeração: só correções muda o terceiro número (1.0.0 → 1.0.1); recurso novo muda o segundo (1.0.x → 1.1.0).
 
+## [1.4.0] (candidata, não publicada)
+
+- **Menos conexões do WebView2 com a Microsoft:** o componente abria sozinho uma conexão quando o perfil dele
+  já estava registrado. O programa apaga só o arquivo `Local State` do próprio perfil antes de abrir (se nenhuma outra
+  cópia o estiver usando), como achou o pesquisador da gestão. Medido por PID: sem o remédio, 4 de 4 aberturas
+  conectaram; com ele, 9 de 12 medições de 90 a 180 s ficaram sem conexão, mas em 5 aberturas de 10 minutos só 2
+  ficaram sem conexão (as outras 3 tiveram uma, aos 0,5, 2,9 e 8,8 minutos). O remédio diminui, não zera.
+- **Correções da auditoria de 29/10** (`docs/AUDITORIA-2026-10-29-RESPOSTA.md`): fechar com desenho noutra tela ou
+  com texto em edição pede confirmação; a Mão não apaga o Refazer; toque único desenha o ponto; um segundo dedo não
+  emenda o traço; pressão zero sai fina; tinta que some não conta depois de sumir; limite do cabeçalho da API local.
+- **Exe sem compressão interna** (a brotli do Tauri): com ela, o instalador levava 1 alerta de 75 no VirusTotal.
+- **O instalador vai dentro de um zip** (`Instalar-GizNaTela-1.4.0.zip`): o .exe solto leva um alerta de um
+  antivírus só, de causa não confirmada (o mesmo acusa a 1.3.2 publicada e até um programa Tauri mínimo); os zips dão zero. O Sobre da 1.4.0 em
+  diante baixa o zip, confere o SHA-256 e o abre com o tar do Windows. O da 1.3.x não acha o instalador no zip: quem
+  tem a 1.3.x baixa o zip na página e instala por cima.
+- **Mais firme ao abrir:** o WebView2 às vezes falha ao criar a janela (0x80070578), por exemplo com outro programa
+  abrindo e fechando janelas dele ao mesmo tempo. A barra nasce invisível e só aparece pronta; se a criação
+  falhar, o programa tenta de novo (até 3 vezes) e, se não der, explica em português o que fazer, sem caixa técnica.
+  O detalhe fica em `janelas.log`, na pasta dos ajustes.
+- **Atualizar não fecha mais à força um Giz na Tela aberto:** o desinstalador da 1.3.x fechava todo GizNaTela.exe da
+  conta, até uma cópia portátil com desenho. O instalador novo pede que cada cópia se feche como pelo X (com desenho,
+  ela pede confirmação) e espera; a desinstalação também.
+- **Na dúvida, não fecha:** se a camada não responde ou o estado vem vazio, o X e o pedido de um agente tratam a tela
+  como tendo desenho e pedem confirmação, em vez de fechar e perder a tinta.
+- **Troca do programa com volta atrás:** se o antigo já saiu do lugar e o novo não consegue entrar, o antigo volta, e o
+  programa nunca fica sem o exe.
+- **WebView2 que sobrou de uma queda:** uma consulta que falha não conta mais como "programa dono morto", e só conta
+  como fechado o processo que saiu de fato. O perfil é lido argumento por argumento (com as regras do Windows): o
+  texto dentro do valor de outro argumento não conta, duas chaves são ambíguas, e o processo conferido é o mesmo que
+  fecha (um handle só).
+- **A cópia de segurança dos ajustes não se perde:** o `config.json` estragado não é mais copiado por cima do
+  `config.json.bak` bom.
+- **Ajustes mexidos à mão:** uma espessura com nome que não existe (como `__proto__`) não entra, nem nas canetas prontas.
+- **API local mais estrita:** cabeçalho que só pode vir uma vez (Content-Length, Host, token) repetido e o corpo em
+  pedaços são recusados; desligar ou mudar o nível dos agentes cancela os pedidos que ainda não foram feitos.
+- **Versão nova:** a soma publicada tem de ser 64 dígitos hexadecimais (o arquivo baixado já era conferido).
+- **Sem caminhos deste computador dentro do exe:** a compilação troca as pastas da conta e do projeto por nomes curtos e
+  liga o modo de produção do Tauri.
+- **O zip do instalador leva um LEIA-ME curto:** extrair e abrir o exe.
+
+- **Instalador próprio** (protótipo, decisão do professor de 29/10: sem assinatura paga, sem Inno, NSIS nem MSI):
+  o `GizNaTela.exe`, baixado com o nome `Instalar-GizNaTela-<versão>.exe` (ou aberto com `--instalar`), se instala
+  na conta, sem administrador. Ele:
+  - se copia para a mesma pasta de antes;
+  - cria os atalhos com o ID da barra de tarefas e aparece em Aplicativos instalados;
+  - tira a instalação antiga do Inno;
+  - aceita os argumentos que o Sobre da 1.3.x manda (`/S /reabrir=1`);
+  - desinstala por uma cópia na pasta temporária (os ajustes e as imagens ficam).
+
+  Teste: `tests/instalador_proprio.ps1`, também no workflow "PC limpo".
+- **Menos conexões do WebView2:** o componente da Microsoft que desenha as janelas abria conexões com servidores da
+  Microsoft por conta própria (SmartScreen, atualização de componentes, telemetria). O programa agora desliga esses
+  serviços e manda o resto para um proxy que não existe, como o Bancada Livre. Medido por 4 minutos: de 3 conexões
+  para 1, que o próprio componente abre e só o firewall bloquearia. A privacidade (README e ajuda) agora diz isso.
+- **Duas contas no mesmo PC (laboratório):** o "Mandar ao Giz Livre" lê a porta e o código no arquivo da própria
+  conta (`%LOCALAPPDATA%\Giz Livre\conexao.json`, combinado com a equipe do Giz Livre). Com o Giz Livre de outra conta
+  aberto, abre o desta conta em vez de entregar lá. O Giz Livre antigo, que dá o código pelo `/api/info`, continua
+  funcionando.
+- **Instalador NSIS do próprio Tauri** (candidato, ao lado do Inno, até o VirusTotal decidir):
+  - instala na mesma pasta das versões do Inno e tira a instalação antiga (os ajustes e as imagens ficam);
+  - os atalhos levam o mesmo ID da barra de tarefas;
+  - aceita o /SILENT e o /reabrir=1 que o "Instalar" do Sobre das versões até a 1.3.2 manda;
+  - o Sobre passa a mandar /S /reabrir=1;
+  - a instalação para todos (Arquivos de Programas) passa a mostrar a página em vez de se atualizar.
+
 ## [1.3.2] - 2026-10-28
 
 Delete que limpa a tela.

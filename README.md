@@ -36,12 +36,17 @@ digitalizadora. Livre, gratuito e sem internet.</p>
 
 ## Qual arquivo baixar?
 
-Versão de agora: **1.3.2** ([todas as versões](https://github.com/HeraldoAntunes/giz-na-tela/releases)).
+Versão de agora: **1.4.0** ([todas as versões](https://github.com/HeraldoAntunes/giz-na-tela/releases)).
 
 | Para quê | Baixar |
 |---|---|
-| **Instalar no computador (Windows)** | [**Instalar-GizNaTela-1.3.2.exe**](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.3.2/Instalar-GizNaTela-1.3.2.exe) |
-| Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.3.2-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.3.2/GizNaTela-1.3.2-portatil.zip) |
+| **Instalar no computador (Windows)** | [**Instalar-GizNaTela-1.4.0.zip**](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.0/Instalar-GizNaTela-1.4.0.zip) |
+| Escola sem internet (leva o WebView2 da Microsoft junto) | [GizNaTela-1.4.0-sem-internet.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.0/GizNaTela-1.4.0-sem-internet.zip) |
+| Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.4.0-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.0/GizNaTela-1.4.0-portatil.zip) |
+
+Abra o zip e dê dois cliques em **Instalar-GizNaTela-1.4.0.exe**. O instalador é o próprio programa: ele pergunta se
+instala na sua conta ou se só abre, sem instalar. Quem tem a 1.3.x instala assim, por cima (o "Procurar versão nova"
+da 1.3.x não acha o instalador dentro do zip); da 1.4.0 em diante, a atualização pelo Sobre volta a funcionar.
 
 Se o Windows avisar "o Windows protegeu o computador", clique em **Mais informações → Executar assim mesmo** (o
 programa é gratuito e não tem assinatura paga). A conferência dos arquivos fica na
@@ -119,9 +124,11 @@ A mesma aba mostra o trecho pronto para a configuração do assistente. Detalhes
 
 ## Requisitos
 
-- Windows 10 ou 11, 64 bits. Não precisa de administrador (instala só para a sua conta, ou para todos, se quiser).
-- O WebView2 da Microsoft, que desenha a barra e a tinta. Já vem no Windows 11 e nos Windows 10 atualizados; se
-  faltar, o instalador o instala junto (precisa de internet nessa hora) e a versão portátil explica onde baixar.
+- Windows 10 ou 11, 64 bits. Não precisa de administrador: instala só para a sua conta. Em laboratório que apaga tudo
+  ao reiniciar, use a versão portátil num pendrive.
+- O WebView2 da Microsoft, que desenha a barra e a tinta. Já vem no Windows 11 e nos Windows 10 atualizados. Se
+  faltar, o programa explica onde baixar; sem internet, o pacote "escola sem internet" traz o instalador oficial da
+  Microsoft ao lado e o programa oferece instalá-lo.
 - Mesa digitalizadora: para a pressão funcionar, ligue **"Usar Windows Ink"** no painel de ajustes da mesa. Testado no
   Windows 11 com mesa digitalizadora de caneta.
 
@@ -134,8 +141,8 @@ a outra. Escrever nas duas ao mesmo tempo ainda não dá.
 distribuir.
 
 **Precisa de internet?** Não. O programa não acessa a internet sozinho. As únicas exceções: se faltar o WebView2 no
-computador, o instalador o baixa da Microsoft durante a instalação, e a versão portátil oferece abrir a página de
-download, só se você clicar em "Sim".
+computador, o programa oferece abrir a página de download da Microsoft, só se você clicar em "Sim" (o pacote
+"escola sem internet" o instala sem rede).
 
 **Funciona por cima de apresentação em tela cheia?** Funciona: a camada fica por cima de qualquer janela, inclusive
 slides, vídeo e navegador em tela cheia. Para passar o slide, troque para **Mouse livre** (ou recolha a barra); para
@@ -162,8 +169,9 @@ ou **Mandar ao Giz Livre**.
 barra fica, agentes de IA), em `%APPDATA%\Giz na Tela`. Na versão portátil, os ajustes ficam na pasta `dados`, ao lado
 do programa.
 
-**Como atualizo?** Baixe o instalador da versão nova e instale por cima: ele fecha o Giz na Tela, se estiver aberto, e
-mantém os ajustes e as imagens.
+**Como atualizo?** Pelo Sobre (Procurar versão nova), ou baixe o instalador da versão nova e instale por cima: ele
+fecha o Giz na Tela, se estiver aberto, e mantém os ajustes e as imagens. Para tirar o programa, use Aplicativos
+instalados ou o atalho "Desinstalar o Giz na Tela" no menu Iniciar.
 
 **Os agentes de IA vêm ligados?** Não. Só funcionam se você ligar em Ajuda → Agentes de IA, e só para programas do
 próprio computador.
@@ -188,7 +196,8 @@ python tests\testar_comandos.py
 
 O programa sai em `target\release\GizNaTela.exe`. O teste de comandos abre o programa com pastas temporárias, cobre a
 tela por alguns segundos e confere cada comando, a segurança da API, os níveis dos agentes e o MCP. O instalador e a
-versão portátil saem de `installer\build.ps1` (Inno Setup 6).
+versão portátil saem de `installer\build.ps1`: o instalador é o próprio `GizNaTela.exe` com outro nome
+(`src/instalador.rs`), sem Inno, NSIS nem MSI.
 
 ## Privacidade
 
@@ -199,6 +208,12 @@ lá e confere se o arquivo é o original antes de abrir.
 As imagens e os ajustes ficam só no seu computador. "Mandar ao Giz Livre" entrega a imagem ao Giz Livre aberto no
 mesmo computador, sem passar pela internet. Os agentes de IA vêm desligados; se você ligar, só programas do próprio
 computador conseguem usar, e com um código de acesso que o Giz na Tela cria e guarda.
+
+A janela do Giz na Tela é desenhada pelo WebView2, um componente da Microsoft que vem no Windows. O WebView2 pode
+abrir sozinho uma conexão com a Microsoft. O programa desliga os serviços de rede dele e, desde a 1.4.0, também evita a
+conexão que ele abria ao reabrir, mas só em parte das aberturas: nas medições, 2 de 5 aberturas de 10 minutos ficaram
+sem conexão nenhuma. Como isso depende do componente da Microsoft, não há garantia; nada seu (desenho, imagem, texto) passa por
+ela, e quem quiser pode bloqueá-la no firewall do Windows.
 
 ## Contribuir
 

@@ -92,7 +92,8 @@ function ajustar() {
   cv.width = innerWidth * r; cv.height = innerHeight * r; ctx.setTransform(r, 0, 0, r, 0, 0); redesenhar();
 }
 addEventListener('resize', () => { ajustar(); avisarBarra(); });   // outra tela: outro tamanho
-function largura(p, t) { return t.borracha ? 28 : t.largura * (0.35 + 1.3 * (p.p || 0.5)); }
+// pressão 0 é a caneta encostando de leve (traço fino); sem pressão nenhuma (item de agente), o meio
+function largura(p, t) { return t.borracha ? 28 : t.largura * (0.35 + 1.3 * (p.p ?? 0.5)); }
 // letra grande o bastante para ler do fundo da sala; espessura fina/média/grossa = 22/30/46 px
 const tamTexto = largura => 14 + largura * 4;
 const raioNumero = largura => 10 + largura * 2;
@@ -137,10 +138,16 @@ function desenharTraco(t) {
   if (t.marca) {   // marca-texto: um caminho só, translúcido, para as emendas não escurecerem
     ctx.save(); ctx.globalAlpha *= 0.35; ctx.strokeStyle = t.cor; ctx.lineWidth = t.largura * 4;
     ctx.lineCap = ctx.lineJoin = 'round'; ctx.beginPath();
-    t.pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); ctx.restore(); return;
+    t.pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    if (t.pts.length === 1) ctx.lineTo(t.pts[0].x + 0.01, t.pts[0].y);   // um toque: a ponta redonda vira o ponto
+    ctx.stroke(); ctx.restore(); return;
   }
   ctx.globalCompositeOperation = t.borracha ? 'destination-out' : 'source-over';
   ctx.strokeStyle = t.cor; ctx.lineCap = ctx.lineJoin = 'round';
+  if (t.pts.length === 1) {   // toque sem arrastar: um ponto do tamanho da ponta
+    const p = t.pts[0];
+    ctx.fillStyle = t.cor; ctx.beginPath(); ctx.arc(p.x, p.y, largura(p, t) / 2, 0, 2 * Math.PI); ctx.fill();
+  }
   for (let i = 1; i < t.pts.length; i++) {
     const a = t.pts[i - 1], b = t.pts[i];
     ctx.lineWidth = largura(b, t); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
@@ -375,9 +382,15 @@ async function congelar(sim, sozinho = false) {
   avisarBarra(); return true;
 }
 // o que a barra precisa saber daqui (acender Congelar e Ampliar, armar o X de Fim, responder estado.ler)
+// o que se perde ao fechar: a tinta de todas as telas (a que sumiu não conta), o texto ainda em edição e o traço
+// que está sendo feito
+function conteudo() {
+  const outras = Object.entries(PAGINAS).filter(([k]) => k !== S.chaveTela).reduce((n, [, p]) => n + vivos(p.tracos).length, 0);
+  return vivos(S.tracos).length + outras + (escrita && escrita.el.innerText.trim() ? 1 : 0) + (S.atual ? 1 : 0);
+}
 function estado() {
   return { congelado: congelado.style.display === 'block', ampliado: V.z > 1 || S.ferramenta === 'ampliar',
-    tracos: S.tracos.length, desfazer: S.passado.length > 0, refazer: S.futuro.length > 0, selecionados: sel.size,
+    tracos: vivos(S.tracos).length, conteudo: conteudo(), desfazer: S.passado.length > 0, refazer: S.futuro.length > 0, selecionados: sel.size,
     largura: innerWidth, altura: innerHeight, escala: S.escala,
     ultimaMedida: [...S.tracos].reverse().find(t => t.forma === 'cota' && t.medida)?.medida ?? null };
 }
@@ -441,15 +454,22 @@ function devolver() {
   S.ferramenta = S.temporaria; S.temporaria = null; atualizarCursor();
 }
 cv.addEventListener('contextmenu', e => e.preventDefault());
+// a captura falha se o ponteiro já subiu (ou se o evento é de teste): o traço segue do mesmo jeito
+function capturar(e) { try { cv.setPointerCapture(e.pointerId); } catch {} }
+// um ponteiro por vez: enquanto um traço (ou arrasto, ou laço) está em andamento, outro dedo ou caneta é ignorado
+const ocupado = () => !!(S.atual || movendo || S.laco);
+const deOutro = e => ocupado() && S.ponteiro != null && e.pointerId !== S.ponteiro;
 cv.addEventListener('pointerdown', e => {
+  if (deOutro(e)) return;
   conferirEntrada(e);
   if (ladoApertado(e)) {
-    if (!encostada(e)) { S.lateral = true; cv.setPointerCapture(e.pointerId); return; }
+    if (!encostada(e)) { S.lateral = true; capturar(e); return; }
     emprestar();
   }
   comecar(e);
 });
 function comecar(e) {
+  S.ponteiro = e.pointerId;
   if (S.ferramenta === 'holofote') { moverLuz(e.clientX, e.clientY); return; }
   if (S.ferramenta === 'lupa') { moverLupa(e.clientX, e.clientY); return; }
   if (S.ferramenta === 'ampliar') {   // o toque escolhe o ponto; depois volta a ferramenta de antes, para escrever
@@ -466,7 +486,7 @@ function comecar(e) {
     acrescentar({ correcao: S.ferramenta, x: w.x, y: w.y, tam: tamMarca(S.largura), cor: S.cor });
     redesenhar(); return;
   }
-  cv.setPointerCapture(e.pointerId);
+  capturar(e);
   if (S.ferramenta === 'mover' && e.button !== 5) { pegar(w); return; }
   if (S.ferramenta === 'laco' && e.button !== 5) {
     const c = caixaDaSelecao();
@@ -483,9 +503,12 @@ function comecar(e) {
   S.atual = { cor: S.cor, largura: S.largura, marca: S.ferramenta === 'marca', borracha: S.ferramenta === 'borracha' || e.button === 5, pts: [{ ...w, p: e.pressure }] };
 }
 cv.addEventListener('pointermove', e => {
-  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  // a lista de pontos agrupados pode vir vazia (evento sem pontos extras): vale o próprio evento
+  let evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+  if (!evs.length) evs = [e];
   if (S.ferramenta === 'holofote') { moverLuz(e.clientX, e.clientY); return; }
   if (S.ferramenta === 'lupa') { moverLupa(e.clientX, e.clientY); return; }
+  if (deOutro(e)) return;
   if (S.lateral && encostada(e) && !S.atual && !movendo && !S.laco) { S.lateral = false; emprestar(); comecar(e); return; }
   if (S.temporaria && !encostada(e)) { fimTraco(); S.lateral = !!(e.buttons & 2); return; }
   if (movendo) { arrastar(W(e)); return; }
@@ -494,7 +517,7 @@ cv.addEventListener('pointermove', e => {
   if (S.atual.forma) { S.atual.b = pontaFinal(S.atual.a, e, S.atual.forma); pedirQuadro(); return; }
   if (e.shiftKey && !S.atual.borracha) {
     const a = S.atual.pts[0];
-    S.atual.pts = [a, { ...pontaFinal(a, e, 'reta'), p: e.pressure || a.p }]; S.atual.reto = true;
+    S.atual.pts = [a, { ...pontaFinal(a, e, 'reta'), p: e.pressure ?? a.p }]; S.atual.reto = true;
     pedirQuadro(); return;
   }
   for (const c of evs) S.atual.pts.push({ ...W(c), p: c.pressure });
@@ -523,7 +546,8 @@ function fimTraco() {
   redesenhar();
   devolver();
 }
-cv.addEventListener('pointerup', fimTraco); cv.addEventListener('pointercancel', fimTraco);
+const soltou = e => { if (!deOutro(e)) fimTraco(); };
+cv.addEventListener('pointerup', soltou); cv.addEventListener('pointercancel', soltou);
 // numeração: continua do maior número na tela; desfazer e limpar fazem a contagem voltar junto
 function proximoNumero() { return S.tracos.reduce((m, t) => Math.max(m, t.n || 0), 0) + 1; }
 // texto: caixa editável no ponto clicado; Enter termina, Shift+Enter quebra a linha, Esc desiste
@@ -534,6 +558,7 @@ function abrirEscrita(x, y) {
   Object.assign(el.style, { left: x + 'px', top: y - tam * 0.6 + 'px', fontSize: tam + 'px', color: S.cor });
   palco.append(el);
   escrita = { el, x, y: y - tam * 0.6, tam, cor: S.cor };
+  el.addEventListener('input', avisarBarra);   // texto digitado conta para o X de Fim pedir confirmação
   el.addEventListener('keydown', e => {
     e.stopPropagation();
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); terminarEscrita(); }
@@ -553,6 +578,7 @@ function terminarEscrita(desistir = false) {
     redesenhar(); avisarBarra(); return;
   }
   if (!desistir && texto.trim()) { acrescentar({ texto, x: x + 2, y, tam, cor }); redesenhar(); }
+  else avisarBarra();
 }
 // ---- a mão: pega o objeto de cima no ponto tocado e arrasta; cada arrasto é um passo do Desfazer ----
 let movendo = null;
@@ -597,13 +623,15 @@ const deCima = p => { for (let i = S.tracos.length - 1; i >= 0; i--) if (acerta(
 function pegar(p) {
   const i = deCima(p);
   if (i < 0) return;
+  const futuro = S.futuro;
   guardar();
-  movendo = { originais: new Map([[i, S.tracos[i]]]), de: p, mexeu: false };
+  movendo = { originais: new Map([[i, S.tracos[i]]]), de: p, mexeu: false, futuro };
   atualizarCursor();
 }
 function pegarGrupo(p) {
+  const futuro = S.futuro;
   guardar();
-  movendo = { originais: new Map(S.tracos.map((t, j) => [j, t]).filter(([, t]) => sel.has(t))), de: p, mexeu: false, grupo: true };
+  movendo = { originais: new Map(S.tracos.map((t, j) => [j, t]).filter(([, t]) => sel.has(t))), de: p, mexeu: false, grupo: true, futuro };
   atualizarCursor(); redesenhar();
 }
 function arrastar(p) {
@@ -620,7 +648,7 @@ function pedirQuadroMover() {
   requestAnimationFrame(() => { quadroMover = false; redesenhar(); });
 }
 function soltar() {
-  if (!movendo.mexeu) S.passado.pop();   // só um toque, sem arrastar: não vira passo do Desfazer
+  if (!movendo.mexeu) { S.passado.pop(); S.futuro = movendo.futuro; }   // só um toque: nem Desfazer nem Refazer mudam
   if (movendo.grupo) sel = new Set([...movendo.originais.keys()].map(j => S.tracos[j]).filter(Boolean));
   movendo = null; redesenhar(); atualizarCursor(); avisarBarra();
 }
@@ -751,7 +779,9 @@ window.camada = {
       terminarEscrita(); sel = new Set();
       PAGINAS[S.chaveTela] = { tracos: S.tracos, passado: S.passado, futuro: S.futuro };
       ({ tracos: S.tracos, passado: S.passado, futuro: S.futuro } = PAGINAS[chave] || { tracos: [], passado: [], futuro: [] });
-      ajustar(); atualizarCursor();
+      S.tracos = vivos(S.tracos);   // a tinta que some e venceu enquanto esta tela estava fora não volta
+      if (S.tracos.some(t => t.ate)) animarSumico();
+      ajustar(); atualizarCursor(); avisarBarra();
     }
     S.chaveTela = chave;
     return estado();

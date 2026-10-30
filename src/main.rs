@@ -4,10 +4,14 @@
 // tela, arquivos, o envio ao Giz Livre, a API local e o MCP (GizNaTela.exe --mcp).
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[cfg(feature = "api")]
 mod api;
 mod atualizacao;
 mod captura;
 mod config;
+#[cfg(feature = "instalar")]
+mod instalador;
+#[cfg(feature = "api")]
 mod mcp;
 mod sistema;
 
@@ -18,6 +22,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+#[cfg(feature = "atalho-global")]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 pub const VERSAO: &str = env!("CARGO_PKG_VERSION");
@@ -31,6 +36,8 @@ pub struct Estado {
     config_mudou: AtomicBool,
     pendentes: Mutex<HashMap<u64, mpsc::Sender<Value>>>,
     proximo: AtomicU64,
+    // muda a cada troca do nível dos agentes: o pedido que começou antes da troca não é mais feito (src/api.rs)
+    pub epoca_agentes: AtomicU64,
 }
 
 // a barra, a camada e a ajuda falam com o host por este objeto; window.CONFIG traz o que precisam saber ao abrir
@@ -290,6 +297,7 @@ async fn ajuda(app: AppHandle) -> Result<(), String> {
         .center()
         .always_on_top(true)
         .initialization_script(&iniciar_js(&app))
+        .additional_browser_args(SEM_REDE)
         .build().map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -315,6 +323,9 @@ fn agentes(app: AppHandle, nivel: String) -> Result<Value, String> {
     }
     let estado = app.state::<Estado>();
     estado.config.lock().unwrap().agentes = nivel.clone();
+    // nova época: os pedidos dos agentes que ainda não foram feitos (na API ou na fila da barra) são cancelados
+    let epoca = estado.epoca_agentes.fetch_add(1, Ordering::SeqCst) + 1;
+    js(&app, "barra", &format!("agentesMudaram({epoca})"));
     gravar_config(&app);
     preparar_token(&estado, &nivel).map_err(|e| e.to_string())?;
     Ok(info(app.clone()))
@@ -382,8 +393,80 @@ fn iniciar_js(app: &AppHandle) -> String {
     format!("window.CONFIG = {config};{PONTE}")
 }
 
+// O WebView2 abre conexões com a Microsoft por conta própria (SmartScreen, atualização de componentes, telemetria). As
+// páginas daqui não usam a rede (tudo passa pelo programa, e o "Procurar versão nova" é feito em Rust), então os
+// serviços de rede dele ficam desligados e o que sobrar vai para um proxy que não existe. As três janelas dividem o
+// mesmo WebView2: todas precisam dos mesmos argumentos.
+const SEM_REDE: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,AutofillServerCommunication,OptimizationHints,MediaRouter,msEdgeTranslate --disable-background-networking --disable-component-update --disable-domain-reliability --disable-sync --no-pings --disable-client-side-phishing-detection --proxy-server=http://127.0.0.1:9 --proxy-bypass-list=<-loopback>";
+
+// registro das tentativas que falharam ao criar as janelas (só o detalhe técnico; a pessoa vê a mensagem em português)
+fn anotar_janelas(dados: &std::path::Path, falhas: &[String]) {
+    let t = sistema::agora();
+    let linha = format!("{}-{:02}-{:02} {:02}:{:02}:{:02} versão {VERSAO}: tentativa {} de criar as janelas falhou: {}\n",
+        t.ano, t.mes, t.dia, t.hora, t.minuto, t.segundo, falhas.len(), falhas.last().map(String::as_str).unwrap_or(""));
+    let _ = std::fs::create_dir_all(dados);
+    let _ = std::fs::OpenOptions::new().create(true).append(true).open(dados.join("janelas.log"))
+        .and_then(|mut f| std::io::Write::write_all(&mut f, linha.as_bytes()));
+}
+
+// A camada e a barra. A barra nasce invisível e só aparece pronta (o setup a mostra no fim). A camada nasce visível
+// (é transparente): criada escondida, o WebView2 recusa a janela com 0x80070578, em toda tentativa.
+fn criar_janelas(app: &tauri::App, inicio: &str, (larg, alt): (f64, f64), aberta: (f64, f64), tam: (f64, f64))
+    -> Result<(tauri::WebviewWindow, tauri::WebviewWindow), String> {
+    // só na compilação de teste: GIZ_TESTE_FALHAR_JANELA=n faz as n primeiras tentativas falharem como o WebView2
+    // falha às vezes (0x80070578), para o teste tests/testar_janelas.py
+    #[cfg(debug_assertions)]
+    {
+        static FEITAS: AtomicU64 = AtomicU64::new(0);
+        let falhar: u64 = std::env::var("GIZ_TESTE_FALHAR_JANELA").ok().and_then(|v| v.parse().ok()).unwrap_or(0);
+        if FEITAS.fetch_add(1, Ordering::Relaxed) < falhar {
+            return Err("failed to create webview: WebView2 error 0x80070578 (falha forçada pelo teste)".into());
+        }
+    }
+    let camada = WebviewWindowBuilder::new(app, "camada", WebviewUrl::App("camada.html".into()))
+        .title("Giz na Tela - camada")
+        .transparent(true)
+        .decorations(false)
+        .shadow(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .resizable(false)
+        .position(0.0, 0.0)
+        .inner_size(larg, alt)
+        .initialization_script(inicio)
+        .additional_browser_args(SEM_REDE)
+        .build().map_err(|e| format!("camada: {e}"))?;
+    // a barra pertence à camada: o Windows mantém janela "filha" sempre na frente da dona
+    let barra = WebviewWindowBuilder::new(app, "barra", WebviewUrl::App("barra.html".into()))
+        .parent(&camada).map_err(|e| e.to_string())?
+        .title("Giz na Tela")
+        .transparent(true)
+        .decorations(false)
+        .shadow(false)
+        .always_on_top(true)
+        .resizable(false)
+        .minimizable(false)   // tocar no botão da barra de tarefas não some com a barra
+        .visible(false)
+        .position(larg - 148.0, ((alt - aberta.1) / 2.0).max(10.0))   // no meio da altura, à direita
+        .inner_size(tam.0, tam.1)
+        .initialization_script(inicio)
+        .additional_browser_args(SEM_REDE)
+        .build().map_err(|e| format!("barra: {e}"))?;
+    Ok((camada, barra))
+}
+
 fn main() {
     sistema::marcar_programa();
+    // Instalar-GizNaTela-<versão>.exe, --instalar e --desinstalar: o próprio programa se instala (src/instalador.rs)
+    #[cfg(feature = "instalar")]
+    {
+        if let Some(codigo) = instalador::pedido() {
+            std::process::exit(codigo);
+        }
+        if atualizacao::modo_instalado().is_some() {
+            instalador::conferir_instalacao();
+        }
+    }
     let opcoes = Opcoes::da_linha_de_comando();
     // uma parada inesperada fica anotada em <dados>\erros.txt: o programa não tem console para mostrá-la
     let pasta = opcoes.dados.clone();
@@ -409,6 +492,7 @@ fn main() {
         }
         return;
     }
+    #[cfg(feature = "api")]
     if opcoes.mcp {
         std::process::exit(mcp::rodar(&opcoes));
     }
@@ -416,27 +500,35 @@ fn main() {
     if sistema::ja_aberto(&opcoes.dados.display().to_string().to_lowercase(), Duration::from_secs(espera)) {
         return;
     }
-    if !sistema::tem_webview2() {
+    // pacote "para escola sem internet": o instalador do WebView2 da Microsoft ao lado do programa
+    let ao_lado = std::env::current_exe().ok().and_then(|e| e.parent().map(|p| p.to_path_buf()));
+    if !sistema::tem_webview2() && !ao_lado.is_some_and(|p| sistema::instalar_webview2_de(&p, false)) {
         sistema::avisar_sem_webview2();
         return;
     }
+    // o WebView2 que sobrou de uma queda segura o perfil e faria a janela falhar (já com a trava de instância única)
+    sistema::fechar_webview2_orfao(&opcoes.dados);
+    #[cfg(feature = "esquecer-perfil")]
+    sistema::esquecer_perfil_do_webview2();
     let config = Config::ler(&opcoes.dados);
     let estado = Estado { config: Mutex::new(config), token: Mutex::new(None), porta_api: Mutex::new(0),
         recolhida: Mutex::new(false), config_mudou: AtomicBool::new(false), pendentes: Mutex::new(HashMap::new()),
-        proximo: AtomicU64::new(1), opcoes };
+        proximo: AtomicU64::new(1), epoca_agentes: AtomicU64::new(0), opcoes };
     let nivel = estado.config.lock().unwrap().agentes.clone();
     let _ = preparar_token(&estado, &nivel);
     let resultado = tauri::Builder::default()
         .manage(estado)
         .invoke_handler(tauri::generate_handler![responder, camada, estado_camada, tecla, fixar, recolher, congelar,
             salvar, capturar, fim, ajuda, info, agentes, caneta_vista, dica_ink_mostrada, preferencias, escolher_cor,
-            comando_na_barra, copiar, telas, mudar_tela, procurar_versao, instalar_versao])
-        // Ctrl+Alt+F liga e desliga o Mouse livre de qualquer programa (com ele ligado o teclado não chega aqui)
-        .plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(|app, _atalho, ev| {
-            if ev.state() == ShortcutState::Pressed {
-                js(app, "barra", "tecla('f')");
-            }
-        }).build())
+            comando_na_barra, copiar, telas, mudar_tela, procurar_versao, instalar_versao]);
+    // Ctrl+Alt+F liga e desliga o Mouse livre de qualquer programa (com ele ligado o teclado não chega aqui)
+    #[cfg(feature = "atalho-global")]
+    let resultado = resultado.plugin(tauri_plugin_global_shortcut::Builder::new().with_handler(|app, _atalho, ev| {
+        if ev.state() == ShortcutState::Pressed {
+            js(app, "barra", "tecla('f')");
+        }
+    }).build());
+    let resultado = resultado
         // lembra onde a barra ficou (aberta ou recolhida) para abrir no mesmo lugar da próxima vez
         .on_window_event(|w, ev| {
             if let (WindowEvent::CloseRequested { api, .. }, "camada" | "barra") = (ev, w.label()) {
@@ -453,24 +545,13 @@ fn main() {
             }
         })
         .setup(|app| {
+            #[cfg(feature = "atalho-global")]
             let _ = app.global_shortcut().register(Shortcut::new(Some(Modifiers::CONTROL | Modifiers::ALT), Code::KeyF));
             let h = app.handle().clone();
             let tela = app.primary_monitor()?.ok_or("sem monitor")?;
             let escala = tela.scale_factor();
             let (larg, alt) = (tela.size().width as f64 / escala, tela.size().height as f64 / escala);
             let inicio = iniciar_js(&h);
-            let camada = WebviewWindowBuilder::new(app, "camada", WebviewUrl::App("camada.html".into()))
-                .title("Giz na Tela - camada")
-                .transparent(true)
-                .decorations(false)
-                .shadow(false)
-                .always_on_top(true)
-                .skip_taskbar(true)
-                .resizable(false)
-                .position(0.0, 0.0)
-                .inner_size(larg, alt)
-                .initialization_script(&inicio)
-                .build()?;
             let (recolhida, salva) = {
                 let c = app.state::<Estado>().config.lock().unwrap().clone();
                 (c.recolhida, c.barra)
@@ -478,21 +559,31 @@ fn main() {
             *app.state::<Estado>().recolhida.lock().unwrap() = recolhida;
             let aberta = barra_na_tela(Some(tela.clone()));
             let tam = if recolhida { (BOTAO, BOTAO) } else { aberta };
-            // a barra pertence à camada: o Windows mantém janela "filha" sempre na frente da dona
-            let barra = WebviewWindowBuilder::new(app, "barra", WebviewUrl::App("barra.html".into()))
-                .parent(&camada)?
-                .title("Giz na Tela")
-                .transparent(true)
-                .decorations(false)
-                .shadow(false)
-                .always_on_top(true)
-                .resizable(false)
-                .minimizable(false)   // tocar no botão da barra de tarefas não some com a barra
-                .visible(false)
-                .position(larg - 148.0, ((alt - aberta.1) / 2.0).max(10.0))   // no meio da altura, à direita
-                .inner_size(tam.0, tam.1)
-                .initialization_script(&inicio)
-                .build()?;
+            // O WebView2 às vezes falha ao criar a janela (0x80070578, "identificador da janela inválido"), por exemplo
+            // com outro programa abrindo e fechando janelas dele ao mesmo tempo. Tenta de novo; se não der, explica em
+            // português e fecha sem caixa técnica. O detalhe vai para <dados>\janelas.log.
+            let mut falhas: Vec<String> = Vec::new();
+            let (_camada, barra) = loop {
+                match criar_janelas(app, &inicio, (larg, alt), aberta, tam) {
+                    Ok(j) => break j,
+                    Err(e) => {
+                        for rotulo in ["barra", "camada"] {
+                            if let Some(w) = app.get_webview_window(rotulo) { let _ = w.destroy(); }
+                        }
+                        falhas.push(e);
+                        anotar_janelas(&app.state::<Estado>().opcoes.dados, &falhas);
+                        if falhas.len() >= 3 {
+                            if std::env::var_os("GIZ_TESTE_FALHAR_JANELA").is_none() {
+                                sistema::avisar_erro("O Giz na Tela não conseguiu abrir a janela dele agora.\n\n\
+                                    Espere alguns segundos e abra o Giz na Tela de novo. Se continuar, feche os outros \
+                                    programas abertos ou reinicie o computador.");
+                            }
+                            std::process::exit(1);
+                        }
+                        std::thread::sleep(Duration::from_millis(800 * falhas.len() as u64));
+                    }
+                }
+            };
             // abre na tela da última vez, se ela ainda estiver ligada (o projetor pode ter sido desligado)
             let lembrada = app.state::<Estado>().config.lock().unwrap().tela.clone();
             if let Some(m) = telas_em_ordem(&h).into_iter().skip(1).find(|m| lembrada.is_some() && m.name() == lembrada.as_ref()) {
@@ -515,8 +606,9 @@ fn main() {
             if let Ok(h) = barra.hwnd() { sistema::botao_na_barra_de_tarefas(h.0 as isize); }
             let _ = barra.set_skip_taskbar(false);   // pede o botão à barra de tarefas (ITaskbarList::AddTab)
             // API local: sempre escutando, mas sem token (Agentes de IA desligados) recusa tudo
-            let estado = app.state::<Estado>();
-            if let Some((ouvinte, porta)) = api::abrir(estado.opcoes.porta_api) {
+            #[cfg(feature = "api")]
+            if let Some((ouvinte, porta)) = api::abrir(app.state::<Estado>().opcoes.porta_api) {
+                let estado = app.state::<Estado>();
                 *estado.porta_api.lock().unwrap() = porta;
                 let pasta = estado.opcoes.dados.join("agente");
                 let _ = std::fs::create_dir_all(&pasta).and_then(|_| std::fs::write(pasta.join("porta"), porta.to_string()));
