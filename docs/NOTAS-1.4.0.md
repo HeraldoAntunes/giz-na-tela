@@ -32,7 +32,7 @@ salvas ficam. Da 1.4.0 em diante, a atualização por esta tela volta a funciona
   - um segundo dedo não emenda o traço;
   - a escrita bem leve sai fina.
 - **Conexão do WebView2 com a Microsoft:** o componente que desenha a janela abre uma conexão sozinho. O programa tenta
-  evitá-la, mas nas medições desta versão (programa instalado, 4 aberturas de 10 minutos) ela apareceu em todas, nos
+  evitá-la, mas nas medições desta versão (programa instalado, 5 aberturas de 10 minutos) ela apareceu em todas, nos
   primeiros segundos. Nada seu passa por ela, e o firewall do Windows pode bloqueá-la.
 - **Mais firme ao abrir:** se o WebView2 falhar ao criar a janela, o programa tenta de novo e, se não der, explica o que
   fazer.

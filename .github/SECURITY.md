@@ -8,7 +8,7 @@
   - **Sem o WebView2:** pode abrir a página oficial do WebView2 da Microsoft, se o usuário clicar em "Sim".
 - **O componente WebView2 da Microsoft**, que desenha a janela, pode abrir sozinho uma conexão com a Microsoft. O
   programa desliga os serviços de rede dele e tenta evitar a conexão que ele abria ao reabrir, mas nas medições da 1.4.0
-  (programa instalado, 4 aberturas de 10 minutos) ela apareceu em todas, nos primeiros segundos. Nada seu passa por ela, e o firewall do Windows pode bloqueá-la.
+  (programa instalado, 5 aberturas de 10 minutos) ela apareceu em todas, nos primeiros segundos. Nada seu passa por ela, e o firewall do Windows pode bloqueá-la.
 - **Retratos da tela ficam no computador.** "Salvar" grava a imagem em `Documentos\Giz na Tela\capturas`; "Mandar ao
   Giz Livre" entrega a imagem ao Giz Livre aberto no mesmo computador (endereço local `127.0.0.1`).
 - **Agentes de IA: desligados de fábrica.** A API local só existe para programas do próprio computador e:

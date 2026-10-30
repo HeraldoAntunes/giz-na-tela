@@ -9,7 +9,7 @@ Numeração: só correções muda o terceiro número (1.0.0 → 1.0.1); recurso 
   cópia o estiver usando), como achou o pesquisador da gestão. Medido por PID: sem o remédio, 4 de 4 aberturas
   conectaram; com ele, 9 de 12 medições de 90 a 180 s ficaram sem conexão, mas em 5 aberturas de 10 minutos só 2
   ficaram sem conexão (as outras 3 tiveram uma, aos 0,5, 2,9 e 8,8 minutos).
-  No exe publicado, instalado, as 4 aberturas de 10 minutos medidas tiveram a conexão, nos primeiros segundos: nesta
+  No exe publicado, instalado, as 5 aberturas de 10 minutos medidas tiveram a conexão, nos primeiros segundos: nesta
   versão o remédio não se mostrou eficaz.
 - **Correções da auditoria de 29/10** (`docs/AUDITORIA-2026-10-29-RESPOSTA.md`): fechar com desenho noutra tela ou
   com texto em edição pede confirmação; a Mão não apaga o Refazer; toque único desenha o ponto; um segundo dedo não
