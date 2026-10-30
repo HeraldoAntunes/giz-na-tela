@@ -210,9 +210,9 @@ mesmo computador, sem passar pela internet. Os agentes de IA vêm desligados; se
 computador conseguem usar, e com um código de acesso que o Giz na Tela cria e guarda.
 
 A janela do Giz na Tela é desenhada pelo WebView2, um componente da Microsoft que vem no Windows. O WebView2 pode
-abrir sozinho uma conexão com a Microsoft. O programa desliga os serviços de rede dele e, desde a 1.4.0, também evita a
-conexão que ele abria ao reabrir, mas só em parte das aberturas: nas medições, 2 de 5 aberturas de 10 minutos ficaram
-sem conexão nenhuma. Como isso depende do componente da Microsoft, não há garantia; nada seu (desenho, imagem, texto) passa por
+abrir sozinho uma conexão com a Microsoft. O programa desliga os serviços de rede dele e tenta evitar a conexão
+que ele abria ao reabrir, mas nas medições da 1.4.0 (programa instalado, 4 aberturas de 10 minutos) ela apareceu em
+todas, nos primeiros segundos. Como isso depende do componente da Microsoft, não há garantia; nada seu (desenho, imagem, texto) passa por
 ela, e quem quiser pode bloqueá-la no firewall do Windows.
 
 ## Contribuir
