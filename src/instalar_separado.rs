@@ -7,6 +7,9 @@
 
 pub const VERSAO: &str = env!("CARGO_PKG_VERSION");
 
+#[path = "leitura.rs"]
+#[allow(dead_code)]
+mod leitura;
 #[path = "sistema.rs"]
 #[allow(dead_code)]
 mod sistema;

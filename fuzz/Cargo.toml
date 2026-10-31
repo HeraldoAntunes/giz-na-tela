@@ -1,0 +1,41 @@
+# Giz na Tela — © 2026 Heraldo Antunes — Licença MIT (ver LICENSE). Alvos de fuzzing (cargo-fuzz), fora do programa
+# Pacote à parte: o libfuzzer-sys só entra aqui, nunca no GizNaTela.exe nem no Cargo.lock do programa. Os alvos
+# incluem src/leitura.rs, o mesmo código que o programa usa para ler o que vem de fora. Rodar (Rust nightly):
+#   cargo +nightly fuzz run cabecalho -- -max_total_time=60
+[package]
+name = "giz-na-tela-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+license = "MIT"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+# pacote sozinho, sem herdar nada do programa
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "cabecalho"
+path = "fuzz_targets/cabecalho.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "linha_de_comando"
+path = "fuzz_targets/linha_de_comando.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "release"
+path = "fuzz_targets/release.rs"
+test = false
+doc = false
+bench = false

@@ -2,6 +2,7 @@
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
+use crate::leitura::{argumentos, pasta_do_perfil_na_linha};
 
 #[link(name = "user32")]
 extern "system" {
@@ -209,48 +210,6 @@ fn linha_de_comando(h: isize) -> Option<String> {
         if texto.is_null() { return None; }
         Some(String::from_utf16_lossy(std::slice::from_raw_parts(texto, tam)))
     }
-}
-
-// separa a linha de comando em argumentos com as regras do Windows (as do CommandLineToArgvW): espaço separa fora das
-// aspas; 2n barras antes de aspas viram n barras e as aspas abrem ou fecham; 2n+1 barras viram n barras e uma aspa;
-// barras sem aspas depois ficam como estão
-fn argumentos(linha: &str) -> Vec<String> {
-    let (mut todos, mut atual, mut aspas, mut tem) = (Vec::new(), String::new(), false, false);
-    let mut c = linha.chars().peekable();
-    while let Some(ch) = c.next() {
-        match ch {
-            '\\' => {
-                let mut barras = 1;
-                while c.peek() == Some(&'\\') { c.next(); barras += 1; }
-                if c.peek() == Some(&'"') {
-                    atual.extend(std::iter::repeat_n('\\', barras / 2));
-                    if barras % 2 == 1 { c.next(); atual.push('"'); }
-                } else {
-                    atual.extend(std::iter::repeat_n('\\', barras));
-                }
-                tem = true;
-            }
-            '"' => {
-                if aspas && c.peek() == Some(&'"') { c.next(); atual.push('"'); } else { aspas = !aspas; }
-                tem = true;
-            }
-            ' ' | '\t' if !aspas => {
-                if tem { todos.push(std::mem::take(&mut atual)); tem = false; }
-            }
-            _ => { atual.push(ch); tem = true; }
-        }
-    }
-    if tem { todos.push(atual); }
-    todos
-}
-
-// --user-data-dir="C:\...\EBWebView" (com ou sem aspas), só como argumento próprio: o texto dentro do valor de outro
-// argumento não conta, e duas chaves próprias são ambíguas (nenhuma vale)
-fn pasta_do_perfil_na_linha(linha: &str) -> Option<String> {
-    let mut achados = argumentos(linha).into_iter().skip(1).filter_map(|a| a.strip_prefix("--user-data-dir=").map(str::to_owned));
-    let valor = achados.next()?;
-    if achados.next().is_some() { return None; }
-    Some(valor.trim_end_matches('\\').to_lowercase())
 }
 
 pub fn fechar_webview2_orfao(dados: &std::path::Path) {

@@ -6,6 +6,7 @@
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use tauri::AppHandle;
+use crate::leitura::{notas, numeros, soma_publicada};
 
 const REPO: &str = "HeraldoAntunes/giz-na-tela";
 // o GitHub entrega os anexos da release por outros endereços dele; qualquer outro destino é recusado
@@ -88,26 +89,6 @@ fn baixar(url: &str, limite: usize, mut andamento: impl FnMut(u64, u64)) -> Resu
         }
     }
     Err("redirecionamentos demais".into())
-}
-
-fn numeros(v: &str) -> Vec<u32> { v.trim_start_matches('v').split('.').map(|p| p.parse().unwrap_or(0)).collect() }
-
-// "O que mudou" das notas da release, sem as imagens e a tabela de download, para caber na ajuda
-fn notas(corpo: &str) -> String {
-    let parte = corpo.split_once("## O que mudou").map(|(_, r)| r).unwrap_or(corpo);
-    let parte = parte.split("**Conferir o download:**").next().unwrap_or(parte);
-    let linhas: Vec<&str> = parte.lines().map(str::trim_end).filter(|l| !l.trim_start().starts_with("<p>")).collect();
-    let texto = linhas.join("\n").replace("**", "").trim().to_string();
-    if texto.chars().count() > 2000 { texto.chars().take(2000).collect::<String>() + "..." } else { texto }
-}
-
-// linha do SHA256SUMS.txt: "<64 hex>  <nome>"
-fn soma_publicada(somas: &str, nome: &str) -> Option<String> {
-    somas.lines().find_map(|l| {
-        let (h, n) = l.trim().split_once(char::is_whitespace)?;
-        (n.trim().trim_start_matches('*') == nome && h.len() == 64 && h.bytes().all(|b| b.is_ascii_hexdigit()))
-            .then(|| h.to_lowercase())
-    })
 }
 
 struct Versao { numero: String, notas: String, instalador: Option<(String, String)>, somas: Option<String> }

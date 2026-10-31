@@ -38,7 +38,7 @@ print(f"  {'ok  ' if not any('README:' in f for f in falhas) else 'FALHA'} READM
 # créditos de ideias ficam neutros: nenhum nome de outro anotador nos arquivos públicos (código, páginas, README)
 # (cifrados em rot13 para que nem este teste leve os nomes à cópia pública)
 PROIBIDOS = re.compile(codecs.decode(r"cbvagbsvk|tvax|ccvax|rcvp ?cra|mbbzvg", "rot13"), re.I)
-publicos = [p for pat in ("src/*.rs", "web/*", "README.md", "CHANGELOG.md", "installer/*", "tests/*.py", "scripts/*")
+publicos = [p for pat in ("src/*.rs", "fuzz/fuzz_targets/*.rs", "web/*", "README.md", "CHANGELOG.md", "installer/*", "tests/*.py", "scripts/*")
             for p in RAIZ.glob(pat) if p.is_file() and p.suffix in (".rs", ".html", ".js", ".md", ".iss", ".txt", ".py", ".ps1")]
 for p in publicos:
     achado = PROIBIDOS.search(p.read_text(encoding="utf-8-sig", errors="replace"))

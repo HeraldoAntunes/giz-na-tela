@@ -11,6 +11,8 @@ mod captura;
 mod config;
 #[cfg(feature = "instalar")]
 mod instalador;
+#[cfg_attr(not(feature = "api"), allow(dead_code))]   // o cabeçalho HTTP só serve à API
+mod leitura;
 #[cfg(feature = "api")]
 mod mcp;
 mod sistema;

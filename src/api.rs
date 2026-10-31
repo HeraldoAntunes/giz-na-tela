@@ -5,13 +5,13 @@
 //   GET  /api/comandos            lista de comandos, atalhos e botões
 //   POST /api/comando  {"nome": "...", "parametros": {...}}
 use crate::Estado;
+use crate::leitura::{campos_repetidos, ler_cabecalho, MAX_CABECALHO};
 use serde_json::{json, Value};
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
-const MAX_CABECALHO: usize = 16 * 1024;
 const MAX_CORPO: usize = 1024 * 1024;   // traço com 5000 pontos cabe com folga
 
 pub fn abrir(porta: u16) -> Option<(TcpListener, u16)> {
@@ -37,32 +37,6 @@ fn responder(c: &mut TcpStream, status: u16, corpo: &Value) {
 }
 fn erro(c: &mut TcpStream, status: u16, msg: &str) {
     responder(c, status, &json!({ "ok": false, "erro": msg }));
-}
-
-// cabeçalho até a linha em branco, com limite; devolve o que já leu e onde o cabeçalho termina.
-// Err(true): grande demais; Err(false): a conexão fechou antes
-fn ler_cabecalho(c: &mut impl Read) -> Result<(Vec<u8>, usize), bool> {
-    let mut buf = Vec::new();
-    let mut pedaco = [0u8; 4096];
-    loop {
-        if let Some(i) = buf.windows(4).position(|w| w == b"\r\n\r\n") { return Ok((buf, i)); }
-        if buf.len() > MAX_CABECALHO { return Err(true); }
-        match c.read(&mut pedaco) { Ok(0) | Err(_) => return Err(false), Ok(n) => buf.extend_from_slice(&pedaco[..n]) }
-        // o fim do cabeçalho pode chegar no mesmo bloco que passa do limite: o limite vale para o cabeçalho inteiro
-        if let Some(i) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
-            return if i + 4 > MAX_CABECALHO { Err(true) } else { Ok((buf, i)) };
-        }
-    }
-}
-
-// campos que só podem vir uma vez: dois Content-Length (mesmo iguais), dois Host ou dois tokens deixam a leitura
-// ambígua, e o corpo em pedaços (Transfer-Encoding) não é usado por nenhum cliente desta API
-fn campos_repetidos(cab: &str) -> Option<String> {
-    let nomes: Vec<String> = cab.split("\r\n").skip(1).filter_map(|l| Some(l.split_once(':')?.0.trim().to_ascii_lowercase())).collect();
-    if nomes.iter().any(|n| n == "transfer-encoding") { return Some("Transfer-Encoding não é aceito".into()); }
-    ["content-length", "host", "x-giz-tela", "origin"].iter()
-        .find(|u| nomes.iter().filter(|n| n == *u).count() > 1)
-        .map(|u| format!("cabeçalho {u} repetido"))
 }
 
 // o pedido só vale se o nível dos agentes não mudou desde que ele começou (desligar cancela o que ainda não foi feito)
