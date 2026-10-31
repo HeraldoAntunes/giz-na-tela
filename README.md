@@ -11,7 +11,7 @@ digitalizadora. Livre, gratuito e sem internet.</p>
   <a href="#requisitos"><img src="https://img.shields.io/badge/testado%20no-Windows%2011-0078D6" alt="Testado no Windows 11"></a>
   <img src="https://img.shields.io/badge/internet-n%C3%A3o%20precisa-2b8a3e" alt="Não precisa de internet">
   <a href="LICENSE"><img src="https://img.shields.io/badge/licen%C3%A7a-MIT-blue" alt="Licença MIT"></a>
-  <img src="https://img.shields.io/badge/situa%C3%A7%C3%A3o-em%20teste-e8590c" alt="Situação: em teste">
+  <img src="https://img.shields.io/badge/situa%C3%A7%C3%A3o-est%C3%A1vel-2b8a3e" alt="Situação: estável">
   <a href="#comandos-para-tudo-atalhos-testes-e-agentes-de-ia"><img src="https://img.shields.io/badge/agentes-MCP-6f42c1" alt="Agentes: MCP"></a>
   <br>
   <a href="https://github.com/HeraldoAntunes/giz-na-tela/actions/workflows/testes.yml"><img src="https://github.com/HeraldoAntunes/giz-na-tela/actions/workflows/testes.yml/badge.svg" alt="Testes"></a>
