@@ -5,7 +5,7 @@
 //   GET  /api/comandos            lista de comandos, atalhos e botões
 //   POST /api/comando  {"nome": "...", "parametros": {...}}
 use crate::Estado;
-use crate::leitura::{campos_repetidos, ler_cabecalho, MAX_CABECALHO};
+use crate::leitura::{campos_repetidos, ler_cabecalho};
 use serde_json::{json, Value};
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -128,6 +128,7 @@ fn atender(app: &AppHandle, mut c: TcpStream, porta: u16) {
 #[cfg(test)]
 mod testes {
     use super::*;
+    use crate::leitura::MAX_CABECALHO;
     // campo que só pode vir uma vez (Content-Length, Host, token) repetido é recusado, mesmo com o mesmo valor, e o
     // corpo em pedaços (Transfer-Encoding) não é aceito (GNT-X01, auditoria de 30/10/2026)
     #[test]
