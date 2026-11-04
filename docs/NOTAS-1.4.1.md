@@ -1,4 +1,4 @@
-<p><img src="https://raw.githubusercontent.com/HeraldoAntunes/giz-na-tela/main/docs/img/icone.png" alt="" width="64"></p>
+<p><img src="https://raw.githubusercontent.com/HeraldoAntunes/giz-na-tela/v1.4.1/docs/img/icone.png" alt="" width="64"></p>
 
 ## ⬇ Qual arquivo baixar?
 
