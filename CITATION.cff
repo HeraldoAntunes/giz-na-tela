@@ -10,7 +10,7 @@ authors:
     orcid: "https://orcid.org/0000-0002-5495-0381"
 license: MIT
 version: "1.4.1"
-date-released: "2026-10-30"
+date-released: "2026-11-03"
 repository-code: "https://github.com/HeraldoAntunes/giz-na-tela"
 keywords:
   - anotador de tela
@@ -22,5 +22,5 @@ identifiers:
     value: "10.5281/zenodo.23690523"
     description: "DOI de todas as versões no Zenodo (aponta sempre para a mais recente)"
   - type: doi
-    value: "10.5281/zenodo.23806332"
-    description: "DOI da versão 1.4.0"
+    value: "10.5281/zenodo.23935099"
+    description: "DOI da versão 1.4.1"
