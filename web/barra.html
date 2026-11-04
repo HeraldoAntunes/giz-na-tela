@@ -251,7 +251,7 @@ async function recolher(sim) {
 // escolher algo de desenho pelo botão ou atalho é querer desenhar; o agente não mexe no modo do professor
 async function voltarAEscrever(ctx) { if (ctx.origem !== 'agente' && S.fixado) await fixar(false); }
 
-let fimArmado = 0, limparArmado = 0;
+let fimArmado = 0, limparArmado = { em: 0 };
 // Caneta pronta na mão: mudar a cor, a espessura ou trocar entre caneta e marca-texto muda a própria caneta, como uma
 // caneta de verdade. Pegar outra ferramenta (seta, texto...) larga a caneta. Os agentes não mexem nas canetas.
 function seguirPena(ctx) {
@@ -334,6 +334,7 @@ const EXEC = {
     if (S.congelado) await camada('congelar', false);
     lerTelas(await ponte.mudarTela(n));
     S.chaveTela = S.telas[n - 1].nome;
+    limparArmado = { em: 0 };
     await camada('tela', S.chaveTela);
   },
   'captura.salvar': async () => { await soltarLaco(); return ponte.salvar(false); },
@@ -355,8 +356,11 @@ const EXEC = {
     if (ctx.origem !== 'atalho' || S.selecionados) return camada('selecao', { acao: 'apagar' });
     // Delete sem nada escolhido: limpa a tela toda, com um segundo Delete para confirmar (como o Giz Livre, que pergunta)
     if (!S.tracos) return null;
-    if (Date.now() - limparArmado < 3000) { limparArmado = 0; return camada('limpar'); }
-    limparArmado = Date.now();
+    // a confirmação vale só para a mesma tela: o Delete armado numa tela não limpa a outra depois de trocar
+    if (Date.now() - limparArmado.em < 3000 && limparArmado.tela === S.chaveTela) {
+      limparArmado = { em: 0 }; return camada('limpar');
+    }
+    limparArmado = { em: Date.now(), tela: S.chaveTela };
     aviso('Para limpar a tela inteira, aperte Delete de novo (Ctrl+Z desfaz)');
     return null;
   },
@@ -593,7 +597,9 @@ document.addEventListener('keydown', e => {
   if (e.altKey) return;
   const k = (e.ctrlKey ? 'ctrl+' : '') + e.key.toLowerCase();
   if (!ATALHOS[k]) return;
-  e.preventDefault(); window.tecla(k);
+  e.preventDefault();
+  if (e.repeat && k === 'delete') return;   // Delete mantido pressionado não vale pelo segundo toque de limpar
+  window.tecla(k);
 });
 // abriu recolhida (como o professor deixou da última vez): botão pequeno e mouse livre
 if (window.CONFIG?.recolhida) { S.recolhido = true; fixar(true); }

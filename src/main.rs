@@ -397,9 +397,11 @@ fn iniciar_js(app: &AppHandle) -> String {
 
 // O WebView2 abre conexões com a Microsoft por conta própria (SmartScreen, atualização de componentes, telemetria). As
 // páginas daqui não usam a rede (tudo passa pelo programa, e o "Procurar versão nova" é feito em Rust), então os
-// serviços de rede dele ficam desligados e o que sobrar vai para um proxy que não existe. As três janelas dividem o
-// mesmo WebView2: todas precisam dos mesmos argumentos.
-const SEM_REDE: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,AutofillServerCommunication,OptimizationHints,MediaRouter,msEdgeTranslate --disable-background-networking --disable-component-update --disable-domain-reliability --disable-sync --no-pings --disable-client-side-phishing-detection --proxy-server=http://127.0.0.1:9 --proxy-bypass-list=<-loopback>";
+// serviços de rede dele ficam desligados, o que sobrar vai para um proxy que não existe e nenhum nome da internet
+// resolve (na 1.4.0 ainda sobrava uma conexão com a Microsoft; o Giz Livre 1.17.0 zerou assim). O atualizador do Sobre
+// é WinHTTP, fora do WebView2, e não passa por nada disto. As três janelas dividem o mesmo WebView2: todas precisam
+// dos mesmos argumentos.
+const SEM_REDE: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,AutofillServerCommunication,OptimizationHints,MediaRouter,msEdgeTranslate --disable-background-networking --disable-component-update --disable-domain-reliability --disable-sync --no-pings --disable-client-side-phishing-detection --proxy-server=http://127.0.0.1:9 --proxy-bypass-list=<-loopback> --host-resolver-rules=\"MAP * ~NOTFOUND, EXCLUDE 127.0.0.1\"";
 
 // registro das tentativas que falharam ao criar as janelas (só o detalhe técnico; a pessoa vê a mensagem em português)
 fn anotar_janelas(dados: &std::path::Path, falhas: &[String]) {
@@ -630,5 +632,20 @@ fn main() {
     // sem console (programa de janela), um erro ao abrir só seria visto assim
     if let Err(e) = resultado {
         sistema::avisar_erro(&format!("O Giz na Tela não conseguiu abrir.\n\n{e}"));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SEM_REDE;
+
+    // conexões da rc.4 da 1.4.0: o WebView2 ainda falava com a Microsoft; nenhum nome da internet resolve (como no
+    // Giz Livre 1.17.0 e no Tarja Livre), e o proxy que não existe continua para o que vier por endereço
+    #[test]
+    fn webview2_sem_nomes_da_internet() {
+        assert!(SEM_REDE.contains("--host-resolver-rules=\"MAP * ~NOTFOUND, EXCLUDE 127.0.0.1\""));
+        assert!(SEM_REDE.contains("--proxy-server=http://127.0.0.1:9"));
+        assert!(SEM_REDE.contains("msSmartScreenProtection"));   // o padrão do wry continua
+        assert!(!SEM_REDE.contains("  "));
     }
 }

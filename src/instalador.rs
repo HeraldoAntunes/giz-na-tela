@@ -543,8 +543,8 @@ mod testes {
     // tem de voltar ao lugar, senão o programa fica sem exe (lacuna N-C2 da auditoria do modelo nativo, 29/10/2026)
     #[test]
     fn troca_que_falha_devolve_o_antigo() {
-        let pasta = std::env::temp_dir().join(format!("giz-troca-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&pasta);
+        let _guarda = crate::sistema::PastaDeTeste::nova("giz-troca");
+        let pasta = _guarda.0.clone();
         std::fs::create_dir_all(&pasta).unwrap();
         let (para, novo, velho) = (pasta.join("GizNaTela.exe"), pasta.join("GizNaTela.new"), pasta.join("GizNaTela.old"));
         std::fs::write(&para, b"antigo").unwrap();
@@ -555,15 +555,14 @@ mod testes {
         assert!(r.is_err());
         assert_eq!(std::fs::read(&para).ok().as_deref(), Some(&b"antigo"[..]), "o programa antigo voltou ao lugar");
         assert!(!velho.exists() && !novo.exists(), "sem sobra .old nem .new");
-        let _ = std::fs::remove_dir_all(&pasta);
     }
 
     // uma queda no meio deixou só o .old (o exe ausente) e as tentativas seguintes também falham: o .old é a única
     // cópia e não pode ser apagado antes de o novo estar no lugar (N-R1 da auditoria do Tarja, 29/10/2026)
     #[test]
     fn falha_repetida_deixa_uma_copia_valida() {
-        let pasta = std::env::temp_dir().join(format!("giz-troca-r-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&pasta);
+        let _guarda = crate::sistema::PastaDeTeste::nova("giz-troca-r");
+        let pasta = _guarda.0.clone();
         std::fs::create_dir_all(&pasta).unwrap();
         let (para, novo, velho) = (pasta.join("GizNaTela.exe"), pasta.join("GizNaTela.new"), pasta.join("GizNaTela.old"));
         std::fs::write(&velho, b"antigo").unwrap();   // a sobra: só o .old, sem o exe
@@ -577,6 +576,5 @@ mod testes {
             assert!(copias.iter().any(|c| c == b"antigo"), "sobrou pelo menos uma cópia válida do programa");
         }
         assert_eq!(std::fs::read(&para).ok().as_deref(), Some(&b"antigo"[..]), "a cópia voltou ao nome do programa");
-        let _ = std::fs::remove_dir_all(&pasta);
     }
 }

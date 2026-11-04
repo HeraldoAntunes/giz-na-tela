@@ -36,15 +36,15 @@ digitalizadora. Livre, gratuito e sem internet.</p>
 
 ## Qual arquivo baixar?
 
-Versão de agora: **1.4.0** ([todas as versões](https://github.com/HeraldoAntunes/giz-na-tela/releases)).
+Versão de agora: **1.4.1** ([todas as versões](https://github.com/HeraldoAntunes/giz-na-tela/releases)).
 
 | Para quê | Baixar |
 |---|---|
-| **Instalar no computador (Windows)** | [**Instalar-GizNaTela-1.4.0.zip**](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.0/Instalar-GizNaTela-1.4.0.zip) |
-| Escola sem internet (leva o WebView2 da Microsoft junto) | [GizNaTela-1.4.0-sem-internet.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.0/GizNaTela-1.4.0-sem-internet.zip) |
-| Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.4.0-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.0/GizNaTela-1.4.0-portatil.zip) |
+| **Instalar no computador (Windows)** | [**Instalar-GizNaTela-1.4.1.zip**](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.1/Instalar-GizNaTela-1.4.1.zip) |
+| Escola sem internet (leva o WebView2 da Microsoft junto) | [GizNaTela-1.4.1-sem-internet.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.1/GizNaTela-1.4.1-sem-internet.zip) |
+| Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.4.1-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.1/GizNaTela-1.4.1-portatil.zip) |
 
-Abra o zip e dê dois cliques em **Instalar-GizNaTela-1.4.0.exe**. O instalador é o próprio programa: ele pergunta se
+Abra o zip e dê dois cliques em **Instalar-GizNaTela-1.4.1.exe**. O instalador é o próprio programa: ele pergunta se
 instala na sua conta ou se só abre, sem instalar. Quem tem a 1.3.x instala assim, por cima (o "Procurar versão nova"
 da 1.3.x não acha o instalador dentro do zip); da 1.4.0 em diante, a atualização pelo Sobre volta a funcionar.
 
@@ -210,9 +210,9 @@ mesmo computador, sem passar pela internet. Os agentes de IA vêm desligados; se
 computador conseguem usar, e com um código de acesso que o Giz na Tela cria e guarda.
 
 A janela do Giz na Tela é desenhada pelo WebView2, um componente da Microsoft que vem no Windows. O WebView2 pode
-abrir sozinho uma conexão com a Microsoft. O programa desliga os serviços de rede dele e tenta evitar a conexão
-que ele abria ao reabrir, mas nas medições da 1.4.0 (programa instalado, 5 aberturas de 10 minutos) ela apareceu em
-todas, nos primeiros segundos. Como isso depende do componente da Microsoft, não há garantia; nada seu (desenho, imagem, texto) passa por
+abrir sozinho uma conexão com a Microsoft. O programa desliga os serviços de rede dele; nas medições da 1.4.0
+(programa instalado, 5 aberturas de 10 minutos) a conexão apareceu em todas, nos primeiros segundos. Desde a 1.4.1 o
+componente também não acha os endereços da internet. Como isso depende do componente da Microsoft, não há garantia; nada seu (desenho, imagem, texto) passa por
 ela, e quem quiser pode bloqueá-la no firewall do Windows.
 
 ## Contribuir

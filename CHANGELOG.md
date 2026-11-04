@@ -2,6 +2,17 @@
 
 Numeração: só correções muda o terceiro número (1.0.0 → 1.0.1); recurso novo muda o segundo (1.0.x → 1.1.0).
 
+## [1.4.1] (candidata, não publicada)
+
+- **Delete mantido pressionado não limpa a tela:** a repetição do teclado contava como o segundo toque de
+  confirmação. Agora só um segundo toque de verdade limpa (achado da revisão do Codex, Ordem 23).
+- **A confirmação de limpar vale só para a mesma tela:** com duas telas, o Delete apertado numa tela e o seguinte
+  apertado na outra, depois de trocar, limpava a outra tela. Trocar de tela desarma a confirmação.
+- **O WebView2 não acha os endereços da internet:** além dos serviços de rede desligados e do proxy que não existe, o
+  componente passa a não resolver nenhum nome da internet (como no Giz Livre 1.17.0). O "Procurar versão nova" usa o
+  WinHTTP do Windows, fora do WebView2, e não muda. A ajuda conta o que foi medido na 1.4.0 (5 de 5 aberturas de 10
+  minutos com uma conexão).
+
 ## [1.4.0] (candidata, não publicada)
 
 - **Tentativa de evitar a conexão do WebView2 com a Microsoft:** o componente abria sozinho uma conexão quando o perfil dele

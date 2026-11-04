@@ -104,8 +104,8 @@ mod testes {
     // segunda queda perde tudo (GNT-X05, auditoria de 30/10/2026)
     #[test]
     fn backup_bom_nao_e_trocado_pelo_principal_estragado() {
-        let pasta = std::env::temp_dir().join(format!("giz-config-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&pasta);
+        let _guarda = crate::sistema::PastaDeTeste::nova("giz-config");
+        let pasta = _guarda.0.clone();
         std::fs::create_dir_all(&pasta).unwrap();
         let bom = Config { barra: Some((111, 222)), ..Config::default() };
         std::fs::write(pasta.join("config.json.bak"), serde_json::to_vec(&bom).unwrap()).unwrap();
@@ -115,6 +115,5 @@ mod testes {
         c.gravar(&pasta).unwrap();
         std::fs::write(pasta.join("config.json"), b"{outra queda").unwrap();
         assert_eq!(Config::ler(&pasta).barra, Some((111, 222)), "o .bak continua bom depois de gravar");
-        let _ = std::fs::remove_dir_all(&pasta);
     }
 }

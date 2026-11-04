@@ -440,6 +440,22 @@ pub fn botao_na_barra_de_tarefas(hwnd: isize) {
     }
 }
 
+// pasta de teste no Temp que sai sozinha no fim do teste, também quando ele falha (o Drop roda no panic)
+#[cfg(test)]
+pub struct PastaDeTeste(pub std::path::PathBuf);
+#[cfg(test)]
+impl PastaDeTeste {
+    pub fn nova(nome: &str) -> Self {
+        let p = std::env::temp_dir().join(format!("{nome}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&p);
+        Self(p)
+    }
+}
+#[cfg(test)]
+impl Drop for PastaDeTeste {
+    fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.0); }
+}
+
 #[cfg(test)]
 mod testes {
     use super::*;

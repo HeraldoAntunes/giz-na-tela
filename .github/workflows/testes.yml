@@ -32,6 +32,9 @@ jobs:
       - name: Versão, cabeçalhos e nenhum nome de outro programa
         run: python tests/testar_versao.py
 
+      - name: Delete que limpa a tela (sem janela, no Node)
+        run: node tests/testar_teclado.mjs
+
       - name: Compilar (sem avisos)
         shell: pwsh
         run: |

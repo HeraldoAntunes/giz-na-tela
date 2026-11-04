@@ -33,6 +33,8 @@ cargo test --release --locked
 if ($LASTEXITCODE -ne 0) { throw 'os testes do cargo falharam' }
 python tests\testar_versao.py
 if ($LASTEXITCODE -ne 0) { throw 'testar_versao falhou' }
+node tests\testar_teclado.mjs
+if ($LASTEXITCODE -ne 0) { throw 'testar_teclado falhou' }
 if (-not $SemTesteDeTela) {
   python tests\testar_comandos.py
   if ($LASTEXITCODE -ne 0) { throw 'testar_comandos falhou' }

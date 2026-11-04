@@ -226,7 +226,8 @@ mod testes {
     }
     #[test]
     fn abre_o_zip_do_instalador() {
-        let base = std::env::temp_dir().join(format!("giz-teste-zip-{}", std::process::id()));
+        let _guarda = crate::sistema::PastaDeTeste::nova("giz-teste-zip");
+        let base = _guarda.0.clone();
         let (de, para) = (base.join("de"), base.join("para"));
         std::fs::create_dir_all(&de).unwrap();
         std::fs::create_dir_all(&para).unwrap();
@@ -237,7 +238,6 @@ mod testes {
         assert!(ok);
         extrair_zip(&zip, &para).unwrap();
         assert_eq!(std::fs::read(para.join("Instalar-GizNaTela-9.9.9.exe")).unwrap(), b"conteudo de teste");
-        let _ = std::fs::remove_dir_all(&base);
     }
     // a mesma função existe na 1.3.2: o Sobre dela mostra este começo antes do "a release não tem o instalador"
     #[test]

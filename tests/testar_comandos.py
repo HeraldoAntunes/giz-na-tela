@@ -38,6 +38,12 @@ PERFIS = []
 # pastas temporárias de dados e de capturas das cópias abertas pelos testes: apagadas no fim (também com erro);
 # várias cópias seguidas podem usar a mesma pasta (o teste de queda), por isso só no fim do teste inteiro
 PASTAS = []
+# o Temp desta rodada: tudo o que os testes e as cópias abertas por eles gravam na pasta temporária (perfis, dados,
+# a cópia que desinstala, a pasta da atualização) fica aqui dentro, e no fim sai tudo de uma vez, também com erro.
+# Os filhos herdam TEMP e TMP; o tempfile deste processo também passa a usar esta pasta.
+TEMP_DA_RODADA = Path(tempfile.mkdtemp(prefix="giz-na-tela-rodada-"))
+tempfile.tempdir = str(TEMP_DA_RODADA)
+os.environ["TEMP"] = os.environ["TMP"] = str(TEMP_DA_RODADA)
 
 
 def fechar_webview_do_perfil(perfil):
@@ -59,6 +65,14 @@ def fechar_webview_dos_testes():
     time.sleep(0.5)
     for pasta in PASTAS:
         shutil.rmtree(pasta, ignore_errors=True)
+    # o WebView2 fechado à força pode levar uns segundos para soltar os arquivos
+    for _ in range(5):
+        shutil.rmtree(TEMP_DA_RODADA, ignore_errors=True)
+        if not TEMP_DA_RODADA.exists():
+            break
+        time.sleep(1)
+    if TEMP_DA_RODADA.exists():
+        print(f"  AVISO: ficou no Temp (arquivo preso), apagar à mão: {TEMP_DA_RODADA}")
 
 
 def pasta_temporaria():

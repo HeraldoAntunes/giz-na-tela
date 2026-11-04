@@ -823,6 +823,7 @@ window.camada = {
 document.addEventListener('keydown', e => {
   if (e.altKey || ['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
   e.preventDefault();
+  if (e.repeat && e.key === 'Delete') return;   // Delete mantido pressionado não vale pelo segundo toque de limpar
   window.ponte?.tecla((e.ctrlKey ? 'ctrl+' : '') + e.key);
 });
 ajustar(); atualizarCursor(); avisarBarra();
