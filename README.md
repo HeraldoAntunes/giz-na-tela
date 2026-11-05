@@ -7,18 +7,19 @@ Uma camada transparente e uma barra pequena com caneta, formas, texto, holofote 
 digitalizadora. Livre, gratuito e sem internet.</p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/feito%20em-Rust-dea584?logo=rust&logoColor=black" alt="Feito em Rust">
+  <a href="https://github.com/HeraldoAntunes/giz-na-tela/releases/latest"><img src="https://img.shields.io/github/v/release/HeraldoAntunes/giz-na-tela?label=vers%C3%A3o" alt="Versão"></a>
+  <img src="https://img.shields.io/badge/situa%C3%A7%C3%A3o-est%C3%A1vel-2b8a3e" alt="Situação: estável">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licen%C3%A7a-MIT-blue" alt="Licença MIT"></a>
+  <a href="https://doi.org/10.5281/zenodo.23690523"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23690523.svg" alt="DOI"></a>
+  <a href="https://github.com/HeraldoAntunes/giz-na-tela/releases"><img src="https://img.shields.io/github/downloads/HeraldoAntunes/giz-na-tela/total?label=downloads" alt="Downloads"></a>
+  <br>
   <a href="#requisitos"><img src="https://img.shields.io/badge/testado%20no-Windows%2011-0078D6" alt="Testado no Windows 11"></a>
   <img src="https://img.shields.io/badge/internet-n%C3%A3o%20precisa-2b8a3e" alt="Não precisa de internet">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/licen%C3%A7a-MIT-blue" alt="Licença MIT"></a>
-  <img src="https://img.shields.io/badge/situa%C3%A7%C3%A3o-est%C3%A1vel-2b8a3e" alt="Situação: estável">
   <a href="#comandos-para-tudo-atalhos-testes-e-agentes-de-ia"><img src="https://img.shields.io/badge/agentes-MCP-6f42c1" alt="Agentes: MCP"></a>
   <br>
+  <img src="https://img.shields.io/badge/feito%20em-Rust-dea584?logo=rust&logoColor=black" alt="Feito em Rust">
   <a href="https://github.com/HeraldoAntunes/giz-na-tela/actions/workflows/testes.yml"><img src="https://github.com/HeraldoAntunes/giz-na-tela/actions/workflows/testes.yml/badge.svg" alt="Testes"></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/HeraldoAntunes/giz-na-tela"><img src="https://api.scorecard.dev/projects/github.com/HeraldoAntunes/giz-na-tela/badge" alt="OpenSSF Scorecard"></a>
-  <a href="https://github.com/HeraldoAntunes/giz-na-tela/releases/latest"><img src="https://img.shields.io/github/v/release/HeraldoAntunes/giz-na-tela?label=vers%C3%A3o" alt="Versão"></a>
-  <a href="https://github.com/HeraldoAntunes/giz-na-tela/releases"><img src="https://img.shields.io/github/downloads/HeraldoAntunes/giz-na-tela/total?label=downloads" alt="Downloads"></a>
-  <a href="https://doi.org/10.5281/zenodo.23690523"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23690523.svg" alt="DOI"></a>
 </p>
 
 <p align="center">
@@ -44,18 +45,22 @@ Versão de agora: **1.4.1** ([todas as versões](https://github.com/HeraldoAntun
 | Escola sem internet (leva o WebView2 da Microsoft junto) | [GizNaTela-1.4.1-sem-internet.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.1/GizNaTela-1.4.1-sem-internet.zip) |
 | Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.4.1-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.1/GizNaTela-1.4.1-portatil.zip) |
 
-Abra o zip e dê dois cliques em **Instalar-GizNaTela-1.4.1.exe**. O instalador é o próprio programa: ele pergunta se
-instala na sua conta ou se só abre, sem instalar. Quem tem a 1.3.x instala assim, por cima (o "Procurar versão nova"
-da 1.3.x não acha o instalador dentro do zip); da 1.4.0 em diante, a atualização pelo Sobre volta a funcionar.
+Extraia o zip (botão direito, **Extrair tudo**) e dê dois cliques em **Instalar-GizNaTela-1.4.1.exe**. O instalador
+é o próprio programa: ele pergunta se instala na sua conta ou se só abre, sem instalar. Quem tem a 1.3.x ou anterior
+instala assim, por cima (o "Procurar versão nova" da 1.3.x não acha o instalador dentro do zip); da 1.4.0 em diante,
+a atualização pela ajuda volta a funcionar.
 
 Se o Windows avisar "o Windows protegeu o computador", clique em **Mais informações → Executar assim mesmo** (o
-programa é gratuito e não tem assinatura paga). A conferência dos arquivos fica na
-[página de versões](https://github.com/HeraldoAntunes/giz-na-tela/releases).
+programa é gratuito e não tem assinatura paga). Quem quiser conferir os arquivos encontra, na
+[página de versões](https://github.com/HeraldoAntunes/giz-na-tela/releases), o SHA-256 de cada um (uma "impressão
+digital" do arquivo, no `SHA256SUMS.txt`) e a assinatura gratuita do Sigstore (o `.sigstore.json`), que mostra que o
+arquivo saiu deste repositório pelo GitHub. Quem não vai conferir pode ignorar esses arquivos.
 
 - **Grátis e livre:** licença [MIT](LICENSE). Use, copie e distribua à vontade, inclusive em escolas e redes de ensino.
 - **Sem internet, sem conta, sem anúncios:** nada sai do computador; só a procura de versão nova, quando você clica,
   consulta o GitHub.
-- **Pequeno:** um programa só, de cerca de 3,5 MB, sem nada a mais para instalar no Windows 11.
+- **Pequeno:** um programa só, de cerca de 6 MB (o zip baixado tem 1,7 MB), sem nada a mais para instalar no
+  Windows 11.
 
 > **Aviso:** projeto independente e voluntário, fornecido "no estado em que se encontra", **sem garantia de qualquer
 > tipo**. As marcas citadas pertencem aos seus donos; o Giz na Tela é um projeto independente, sem vínculo com elas.
@@ -140,9 +145,9 @@ a outra. Escrever nas duas ao mesmo tempo ainda não dá.
 **É de graça mesmo?** Sim. É software livre (licença MIT): pode usar, copiar, instalar em quantos computadores quiser e
 distribuir.
 
-**Precisa de internet?** Não. O programa não acessa a internet sozinho. As únicas exceções: se faltar o WebView2 no
-computador, o programa oferece abrir a página de download da Microsoft, só se você clicar em "Sim" (o pacote
-"escola sem internet" o instala sem rede).
+**Precisa de internet?** Não. O programa só usa a internet quando você pede: no **Procurar versão nova** e, se faltar
+o WebView2 no computador, para abrir a página de download da Microsoft (só se você clicar em "Sim"; o pacote "escola
+sem internet" o instala sem rede).
 
 **Funciona por cima de apresentação em tela cheia?** Funciona: a camada fica por cima de qualquer janela, inclusive
 slides, vídeo e navegador em tela cheia. Para passar o slide, troque para **Mouse livre** (ou recolha a barra); para
@@ -155,23 +160,23 @@ próprio programa lembra disso no primeiro traço.
 **E com projetor?** No modo "duplicar" funciona normalmente. No modo "estender", aparece na barra o botão de tela
 (tecla Y): um toque leva a tinta e a barra para o projetor, outro traz de volta, e cada tela guarda a sua tinta.
 
-**Como atualizar?** Na ajuda (F1), aba Sobre, **Procurar versão nova** diz se há versão nova e mostra as
-novidades. **Instalar** baixa o instalador da página de versões, confere o SHA-256 publicado e instala por cima; o
-programa fecha e abre de novo sozinho, e os ajustes e as imagens ficam. Nada é baixado nem instalado sem você clicar.
-Quem tem a 1.2.1 ou anterior instala a versão nova à mão uma vez (pelo link acima); dali em diante, pelo Sobre. Na
-versão portátil, baixe o zip novo.
+**Como atualizar?** Na **Ajuda e ajustes** (tecla F1 ou o "?" da barra), aba **Sobre**, **Procurar versão nova** diz
+se há versão nova e mostra as novidades. **Instalar** baixa o instalador da página de versões, confere o SHA-256
+publicado e instala por cima; o programa fecha e abre de novo sozinho, e os ajustes e as imagens ficam. Nada é baixado
+nem instalado sem você clicar. Quem tem a 1.3.x ou anterior instala a versão nova à mão uma vez (pelo link acima); da
+1.4.0 em diante, pelo Sobre. Também dá para baixar o instalador da versão nova e instalar por cima: ele fecha o Giz na
+Tela, se estiver aberto, e mantém os ajustes e as imagens. Na versão portátil, baixe o zip novo.
 
 **Posso perder a aula sem querer?** O **Esc** nunca fecha nem apaga: volta um passo de cada vez. O X de fechar, com
 desenho na tela, pede um segundo toque. **Ctrl+Z** desfaz, inclusive o "Limpar". Para guardar, use **Salvar** (imagem)
 ou **Mandar ao Giz Livre**.
 
 **Onde ficam as imagens e os ajustes?** As imagens salvas, em `Documentos\Giz na Tela\capturas`. Os ajustes (onde a
-barra fica, agentes de IA), em `%APPDATA%\Giz na Tela`. Na versão portátil, os ajustes ficam na pasta `dados`, ao lado
-do programa.
+barra fica, agentes de IA), na pasta `%APPDATA%\Giz na Tela` (cole esse endereço na barra do Explorador de Arquivos).
+Na versão portátil, os ajustes ficam na pasta `dados`, ao lado do programa.
 
-**Como atualizo?** Pelo Sobre (Procurar versão nova), ou baixe o instalador da versão nova e instale por cima: ele
-fecha o Giz na Tela, se estiver aberto, e mantém os ajustes e as imagens. Para tirar o programa, use Aplicativos
-instalados ou o atalho "Desinstalar o Giz na Tela" no menu Iniciar.
+**Como desinstalo?** Use Aplicativos instalados, nas Configurações do Windows, ou o atalho "Desinstalar o Giz na
+Tela" no menu Iniciar.
 
 **Os agentes de IA vêm ligados?** Não. Só funcionam se você ligar em Ajuda → Agentes de IA, e só para programas do
 próprio computador.
@@ -212,8 +217,9 @@ computador conseguem usar, e com um código de acesso que o Giz na Tela cria e g
 A janela do Giz na Tela é desenhada pelo WebView2, um componente da Microsoft que vem no Windows. O WebView2 pode
 abrir sozinho uma conexão com a Microsoft. O programa desliga os serviços de rede dele; nas medições da 1.4.0
 (programa instalado, 5 aberturas de 10 minutos) a conexão apareceu em todas, nos primeiros segundos. Desde a 1.4.1 o
-componente também não acha os endereços da internet. Como isso depende do componente da Microsoft, não há garantia; nada seu (desenho, imagem, texto) passa por
-ela, e quem quiser pode bloqueá-la no firewall do Windows.
+programa também impede o componente de encontrar sites na internet; nas medições da 1.4.1, nenhuma das 5 aberturas
+teve conexão. Como depende do componente da Microsoft, não há garantia. Nada seu (desenho, imagem, texto) passa por
+essa conexão, e ela pode ser bloqueada no firewall do Windows.
 
 ## Contribuir
 
@@ -249,3 +255,4 @@ sem internet e sem conta.
 | <img src="https://raw.githubusercontent.com/HeraldoAntunes/giz-na-tela/main/docs/img/icone.png" alt="" width="36"> | **Giz na Tela** | **Escrever por cima de qualquer programa aberto no computador · você está aqui** | [GitHub](https://github.com/HeraldoAntunes/giz-na-tela) | [Baixar](https://github.com/HeraldoAntunes/giz-na-tela/releases/latest) |
 | <img src="https://raw.githubusercontent.com/HeraldoAntunes/bancada-livre/main/src/assets/icone.svg" alt="" width="36"> | **Bancada Livre** | Simulador de lógica digital: portas, CIs 74xx, flip-flops e tabela-verdade | [GitHub](https://github.com/HeraldoAntunes/bancada-livre) | [Baixar](https://github.com/HeraldoAntunes/bancada-livre/releases/latest) |
 | <img src="https://raw.githubusercontent.com/HeraldoAntunes/tarja-livre/main/docs/img/icone.svg" alt="" width="36"> | **Tarja Livre** | Tarjar dados pessoais em PDF sem internet, de um jeito que a tarja não sai | [GitHub](https://github.com/HeraldoAntunes/tarja-livre) | [Baixar](https://github.com/HeraldoAntunes/tarja-livre/releases/latest) |
+| <img src="https://raw.githubusercontent.com/HeraldoAntunes/amplia/main/docs/img/icone.png" alt="" width="36"> | **Amplia** | Ampliar imagens em pôsteres para imprimir em folhas A4 | [GitHub](https://github.com/HeraldoAntunes/amplia) | [Testar](https://github.com/HeraldoAntunes/amplia/releases) |

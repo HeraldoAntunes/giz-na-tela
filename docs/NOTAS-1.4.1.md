@@ -8,9 +8,9 @@
 | Escola sem internet (leva o WebView2 da Microsoft junto) | GizNaTela-1.4.1-sem-internet.zip | [Baixar](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.1/GizNaTela-1.4.1-sem-internet.zip) |
 | Usar sem instalar (versão portátil, para pendrive) | GizNaTela-1.4.1-portatil.zip | [Baixar](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.1/GizNaTela-1.4.1-portatil.zip) |
 
-Quem tem a 1.4.0 pode atualizar pelo próprio programa: **Ajuda e ajustes → Procurar versão nova → Instalar**. Ou abra
-o zip e dê dois cliques em **Instalar-GizNaTela-1.4.1.exe**: ele instala por cima, e os ajustes e as imagens salvas
-ficam. Quem tem a 1.3.x precisa baixar o zip aqui uma vez (o botão Instalar da 1.3.x não acha o instalador dentro do
+Quem tem a 1.4.0 pode atualizar pelo próprio programa: **Ajuda e ajustes → Sobre → Procurar versão nova → Instalar**.
+Ou extraia o zip (botão direito, **Extrair tudo**) e dê dois cliques em **Instalar-GizNaTela-1.4.1.exe**: ele instala
+por cima, e os ajustes e as imagens salvas ficam. Quem tem a 1.3.x precisa baixar o zip aqui uma vez (o botão Instalar da 1.3.x não acha o instalador dentro do
 zip). Os outros arquivos da lista (SHA256SUMS e .sigstore.json) servem só para conferir o download. Se o Windows avisar
 "o Windows protegeu o computador", clique em **Mais informações → Executar assim mesmo** (o programa é gratuito e não
 tem assinatura paga).
@@ -33,12 +33,12 @@ Versão de correções.
 
 Os dois primeiros achados vieram de uma revisão independente do código; em ambos, Ctrl+Z já trazia a tinta de volta.
 
-**Como foi testada:** os testes automáticos sem janela (os do Rust e os do teclado, que reproduzem os dois casos do
-Delete), a porta de publicação (os três arquivos deram zero alertas em 75 antivírus no VirusTotal) e, numa máquina
+**Como foi testada:** os testes automáticos (entre eles os do teclado, que reproduzem os dois casos do Delete), a
+verificação antes de publicar (os três arquivos deram zero alertas em 75 antivírus no VirusTotal) e, numa máquina
 virtual Windows 11 de testes, os testes com janela: comandos, quedas e reabertura, camada, falhas do WebView2,
 instalação e desinstalação, PC limpo, sem internet (mensagem clara no Procurar versão nova, nenhuma conexão) e a
 medição de conexões do programa instalado: **5 de 5 aberturas de 10 minutos sem nenhuma conexão para fora** (na 1.4.0,
 5 de 5 tiveram uma). A máquina virtual não substitui a mesa digitalizadora, o projetor e duas telas de verdade, que
 ficam para o uso em aula.
 
-**Conferir o download:** o `SHA256SUMS.txt` traz o SHA-256 de cada arquivo (no Windows: `certutil -hashfile Instalar-GizNaTela-1.4.1.zip SHA256`). Cada arquivo também tem uma assinatura digital gratuita do Sigstore (o `.sigstore.json` com o mesmo nome), feita pelo GitHub Actions deste repositório depois de publicado: ela prova que o arquivo baixado é o mesmo que foi assinado ali, não como ele foi montado. Como conferir: [SECURITY.md](https://github.com/HeraldoAntunes/giz-na-tela/blob/main/.github/SECURITY.md).
+**Conferir o download:** o `SHA256SUMS.txt` traz o SHA-256 de cada arquivo, uma "impressão digital" dele (no Windows, abra o Prompt de Comando na pasta do download e digite `certutil -hashfile Instalar-GizNaTela-1.4.1.zip SHA256`). Cada arquivo também tem a assinatura digital gratuita do Sigstore (o `.sigstore.json` com o mesmo nome): mostra que o arquivo saiu deste repositório pelo GitHub. Quem não vai conferir pode ignorar. Como conferir: [SECURITY.md](https://github.com/HeraldoAntunes/giz-na-tela/blob/main/.github/SECURITY.md).
