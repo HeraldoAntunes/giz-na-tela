@@ -290,6 +290,75 @@ pub fn fora_da_captura(hwnd: isize, sim: bool) -> bool {
     unsafe { SetWindowDisplayAffinity(hwnd, if sim { 0x11 } else { 0 }) != 0 }
 }
 
+#[link(name = "user32")]
+extern "system" {
+    fn GetForegroundWindow() -> isize;
+    fn SetForegroundWindow(hwnd: isize) -> i32;
+    fn GetWindow(hwnd: isize, cmd: u32) -> isize;
+    fn GetWindowThreadProcessId(hwnd: isize, pid: *mut u32) -> u32;
+    fn IsWindowVisible(hwnd: isize) -> i32;
+    fn IsIconic(hwnd: isize) -> i32;
+    fn GetClassNameW(hwnd: isize, nome: *mut u16, tam: i32) -> i32;
+    fn GetWindowTextLengthW(hwnd: isize) -> i32;
+}
+#[link(name = "dwmapi")]
+extern "system" {
+    fn DwmGetWindowAttribute(hwnd: isize, atributo: u32, valor: *mut u32, tam: u32) -> i32;
+}
+
+fn do_giz(hwnd: isize) -> bool {
+    let mut pid = 0u32;
+    unsafe { GetWindowThreadProcessId(hwnd, &mut pid) };
+    pid == std::process::id()
+}
+
+// O que se sabe de uma janela candidata a receber o teclado no Mouse livre
+#[derive(Clone, Copy)]
+pub struct Candidata<'a> {
+    pub visivel: bool, pub minimizada: bool, pub escondida: bool, pub do_giz: bool, pub tem_dona: bool,
+    pub tem_titulo: bool, pub estilo_ex: isize, pub classe: &'a str,
+}
+
+// A regra do Alt+Tab: janela de programa visível, sem dona (avisos e balões de um programa têm dona; o aviso de
+// sincronização do Edge, por cima do vídeo, pegava o foco no lugar do player), com título e que não seja de ferramenta.
+pub fn serve_para_o_teclado(j: &Candidata) -> bool {
+    const WS_EX_TOOLWINDOW: isize = 0x80;
+    const WS_EX_APPWINDOW: isize = 0x4_0000;
+    const WS_EX_NOACTIVATE: isize = 0x0800_0000;
+    j.visivel && !j.minimizada && !j.escondida && !j.do_giz && j.tem_titulo
+        && (!j.tem_dona || j.estilo_ex & WS_EX_APPWINDOW != 0)
+        && j.estilo_ex & (WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE) == 0
+        && !matches!(j.classe, "Shell_TrayWnd" | "Shell_SecondaryTrayWnd" | "Progman" | "WorkerW")
+}
+
+// Mouse livre: o teclado também tem de ir para o programa de baixo. Quem acabou de tocar no botão da barra deixou o
+// foco no Giz, e o Espaço para pausar o vídeo ficava preso na barra. Se o foco é nosso, passa para a primeira janela
+// de programa abaixo da camada (a mesma que receberia o clique); se o foco já é de outro programa, não mexe.
+pub fn soltar_teclado(camada: isize) {
+    const GW_HWNDNEXT: u32 = 2;
+    const GW_OWNER: u32 = 4;
+    const GWL_EXSTYLE: i32 = -20;
+    const DWMWA_CLOAKED: u32 = 14;
+    unsafe {
+        let frente = GetForegroundWindow();
+        if frente != 0 && !do_giz(frente) { return; }
+        let mut h = GetWindow(camada, GW_HWNDNEXT);
+        for _ in 0..500 {
+            if h == 0 { return; }
+            let mut escondida = 0u32;
+            let _ = DwmGetWindowAttribute(h, DWMWA_CLOAKED, &mut escondida, 4);
+            let mut nome = [0u16; 32];
+            let n = GetClassNameW(h, nome.as_mut_ptr(), 32).max(0) as usize;
+            let classe = String::from_utf16_lossy(&nome[..n]);
+            let j = Candidata { visivel: IsWindowVisible(h) != 0, minimizada: IsIconic(h) != 0, escondida: escondida != 0,
+                do_giz: do_giz(h), tem_dona: GetWindow(h, GW_OWNER) != 0, tem_titulo: GetWindowTextLengthW(h) > 0,
+                estilo_ex: GetWindowLongPtrW(h, GWL_EXSTYLE), classe: &classe };
+            if serve_para_o_teclado(&j) { SetForegroundWindow(h); return; }
+            h = GetWindow(h, GW_HWNDNEXT);
+        }
+    }
+}
+
 pub fn esconder_janela(hwnd: isize, sim: bool) {
     unsafe { ShowWindow(hwnd, if sim { 0 } else { 8 }) };   // SW_HIDE, SW_SHOWNA (sem roubar o foco)
 }
@@ -459,6 +528,25 @@ impl Drop for PastaDeTeste {
 #[cfg(test)]
 mod testes {
     use super::*;
+    // a janela que recebe o teclado no Mouse livre: a regra do Alt+Tab (o aviso do Edge por cima do vídeo não serve)
+    #[test]
+    fn teclado_vai_para_janela_de_programa_como_no_alt_tab() {
+        let player = Candidata { visivel: true, minimizada: false, escondida: false, do_giz: false, tem_dona: false,
+            tem_titulo: true, estilo_ex: 0x100, classe: "Chrome_WidgetWin_1" };
+        assert!(serve_para_o_teclado(&player));
+        // o aviso de sincronização do Edge: com dona e sem título
+        assert!(!serve_para_o_teclado(&Candidata { tem_dona: true, tem_titulo: false, estilo_ex: 0x200101, ..player }));
+        assert!(!serve_para_o_teclado(&Candidata { tem_dona: true, ..player }));
+        assert!(serve_para_o_teclado(&Candidata { tem_dona: true, estilo_ex: 0x4_0000, ..player }));   // WS_EX_APPWINDOW
+        assert!(!serve_para_o_teclado(&Candidata { tem_titulo: false, ..player }));
+        assert!(!serve_para_o_teclado(&Candidata { estilo_ex: 0x80, ..player }));   // janela de ferramenta
+        assert!(!serve_para_o_teclado(&Candidata { estilo_ex: 0x0800_0000, ..player }));
+        assert!(!serve_para_o_teclado(&Candidata { escondida: true, ..player }));
+        assert!(!serve_para_o_teclado(&Candidata { minimizada: true, ..player }));
+        assert!(!serve_para_o_teclado(&Candidata { visivel: false, ..player }));
+        assert!(!serve_para_o_teclado(&Candidata { do_giz: true, ..player }));
+        assert!(!serve_para_o_teclado(&Candidata { classe: "Shell_TrayWnd", ..player }));
+    }
     // o Edge vem no Windows assinado pela Microsoft; este próprio teste não é assinado
     #[test]
     fn le_a_pasta_do_perfil_na_linha() {

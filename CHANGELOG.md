@@ -2,6 +2,29 @@
 
 Numeração: só correções muda o terceiro número (1.0.0 → 1.0.1); recurso novo muda o segundo (1.0.x → 1.1.0).
 
+## [1.4.2] - 2026-11-19
+
+- **O Espaço não abre nem fecha o Giz:** com um vídeo por baixo, apertar o Espaço para pausar escolhia a mão (Mover)
+  e, com isso, tirava do Mouse livre: o Giz voltava a pegar o clique. O Espaço deixou de ser atalho, e a mão passou
+  para a tecla **I**. Na barra, o Espaço também não aperta mais o botão que estiver com o foco.
+- **No Mouse livre, o teclado vai para o programa de baixo:** quem tocava no botão da barra deixava o foco do teclado
+  no Giz, e o Espaço não chegava ao vídeo. Agora, ao ir para o Mouse livre, o foco passa para a janela de baixo (se
+  estava no Giz). O Ctrl+Alt+F continua voltando a escrever de qualquer programa.
+- **Tinta que some com tempo ajustável:** em Ajuda e ajustes, 2, 3 (de fábrica), 5 ou 10 segundos, guardado como os
+  outros ajustes (comando novo `tinta.tempo`). O fim continua com o apagar suave de 0,7 s.
+- **Lista de Aplicativos instalados sem a versão antiga:** num PC com instalações à mão, uma chave antiga do
+  instalador de antes da 1.4.0, sem o desinstalador no lugar, ficava na lista com a versão velha. Agora o instalador e
+  cada abertura da cópia instalada tiram só essa chave órfã; a que tem desinstalador continua sendo tirada por ele.
+- **Sem sobras no Temp:** a pasta da atualização baixada, a cópia que desinstala e a cópia do instalador da migração
+  saem na abertura seguinte da cópia instalada (só esses nomes, só os de mais de 10 minutos); o `--baixar-versao`
+  apaga a pasta depois de conferir, e um download que falha ao abrir o zip também não deixa nada.
+- **Texto da conexão do WebView2 corrigido:** a 1.4.1 medida no computador de uso do autor teve uma conexão em cada uma
+  das 5 aberturas de 10 minutos (no Windows de testes, nenhuma). A ajuda, o README e o SECURITY dizem os dois números.
+- **Reabrir logo depois de uma queda:** às vezes (1 em cerca de 50 reaberturas no teste) a cópia nova achava ainda
+  presa a trava da cópia que tinha morrido e saía calada, sem abrir. Agora ela espera até 3 segundos pela trava e, se
+  desistir, anota o motivo no `janelas.log`.
+- **Registro no INPI** (BR 51 2026 010708-3) no README e no Sobre.
+
 ## [1.4.1] - 2026-11-03
 
 - **Delete mantido pressionado não limpa a tela:** a repetição do teclado contava como o segundo toque de

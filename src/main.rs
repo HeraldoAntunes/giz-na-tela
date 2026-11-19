@@ -104,8 +104,8 @@ fn responder(estado: State<Estado>, id: u64, r: Value) {
 }
 
 // a barra só pode pedir à camada as funções desta lista; o valor vai serializado em JSON, nunca colado como código
-const DA_CAMADA: [&str; 22] = ["estado", "seta", "cota", "escala", "mover", "cor", "ferramenta", "espessura", "desfazer", "refazer", "limpar", "quadro", "some",
-    "preencher", "congelar", "ampliar", "aviso", "adicionar", "escrevendo", "tela", "botao", "selecao"];
+const DA_CAMADA: [&str; 23] = ["estado", "seta", "cota", "escala", "mover", "cor", "ferramenta", "espessura", "desfazer", "refazer", "limpar", "quadro", "some",
+    "someTempo", "preencher", "congelar", "ampliar", "aviso", "adicionar", "escrevendo", "tela", "botao", "selecao"];
 #[tauri::command]
 async fn camada(app: AppHandle, nome: String, valor: Value) -> Result<Value, String> {
     if !DA_CAMADA.contains(&nome.as_str()) {
@@ -132,6 +132,8 @@ fn fixar(app: AppHandle, sim: bool) -> bool {
     if let Some(w) = app.get_webview_window("camada") {
         let _ = w.set_ignore_cursor_events(sim);
         let _ = w.eval(&format!("camada.escrevendo({})", !sim));
+        // o teclado vai junto com o clique: sem isso o Espaço (pausar o vídeo) ficava na barra do Giz
+        if sim { if let Ok(h) = w.hwnd() { sistema::soltar_teclado(h.0 as isize); } }
     }
     sim
 }
@@ -381,7 +383,7 @@ async fn escolher_cor(app: AppHandle, atual: String) -> Option<String> {
 // a ajuda só pode pedir à barra os comandos desta lista; a barra valida os parâmetros como os de qualquer botão
 #[tauri::command]
 fn comando_na_barra(app: AppHandle, nome: String, args: Value) {
-    if ["cores.restaurar", "caneta.botao"].contains(&nome.as_str()) && args.is_object() && args.to_string().len() < 1024 {
+    if ["cores.restaurar", "caneta.botao", "tinta.tempo"].contains(&nome.as_str()) && args.is_object() && args.to_string().len() < 1024 {
         js(&app, "barra", &format!("executar({}, {}, 'botao').catch(() => {{}})", json!(nome), args));
     }
 }
@@ -405,9 +407,13 @@ const SEM_REDE: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProt
 
 // registro das tentativas que falharam ao criar as janelas (só o detalhe técnico; a pessoa vê a mensagem em português)
 fn anotar_janelas(dados: &std::path::Path, falhas: &[String]) {
+    anotar_linha(dados, &format!("tentativa {} de criar as janelas falhou: {}", falhas.len(),
+        falhas.last().map(String::as_str).unwrap_or("")));
+}
+fn anotar_linha(dados: &std::path::Path, texto: &str) {
     let t = sistema::agora();
-    let linha = format!("{}-{:02}-{:02} {:02}:{:02}:{:02} versão {VERSAO}: tentativa {} de criar as janelas falhou: {}\n",
-        t.ano, t.mes, t.dia, t.hora, t.minuto, t.segundo, falhas.len(), falhas.last().map(String::as_str).unwrap_or(""));
+    let linha = format!("{}-{:02}-{:02} {:02}:{:02}:{:02} versão {VERSAO}: {texto}\n",
+        t.ano, t.mes, t.dia, t.hora, t.minuto, t.segundo);
     let _ = std::fs::create_dir_all(dados);
     let _ = std::fs::OpenOptions::new().create(true).append(true).open(dados.join("janelas.log"))
         .and_then(|mut f| std::io::Write::write_all(&mut f, linha.as_bytes()));
@@ -491,7 +497,12 @@ fn main() {
     }
     if std::env::args().any(|a| a == "--baixar-versao") {
         match atualizacao::baixar_e_conferir(|_, _| {}) {
-            Ok((v, arq)) => println!("{}", json!({ "versao": v, "arquivo": arq.display().to_string(), "sha256": "confere" })),
+            Ok((v, arq)) => {
+                // só confere: a pasta do download sai do Temp em seguida (nada é instalado)
+                let apagou = arq.parent().is_some_and(|p| std::fs::remove_dir_all(p).is_ok());
+                println!("{}", json!({ "versao": v, "arquivo": arq.display().to_string(), "sha256": "confere",
+                    "pasta_apagada": apagou }));
+            }
             Err(e) => println!("{}", json!({ "erro": e })),
         }
         return;
@@ -500,8 +511,13 @@ fn main() {
     if opcoes.mcp {
         std::process::exit(mcp::rodar(&opcoes));
     }
-    let espera = if std::env::args().any(|a| a == "--depois-de-atualizar") { 15 } else { 0 };
+    // Também numa abertura comum espera um pouco: logo depois de uma queda (o exe morto à força), a trava da cópia
+    // que morreu às vezes ainda não soltou, e a nova desistia calada (a falha rara do testar_queda, 1 em ~50 reaberturas,
+    // pega em 18/11/2026: saiu antes de fechar o WebView2 órfão, sem erros.txt). Com outra cópia aberta de verdade,
+    // só demora 3 s para sair.
+    let espera = if std::env::args().any(|a| a == "--depois-de-atualizar") { 15 } else { 3 };
     if sistema::ja_aberto(&opcoes.dados.display().to_string().to_lowercase(), Duration::from_secs(espera)) {
+        anotar_linha(&opcoes.dados, "outra cópia do Giz na Tela já está aberta com esta pasta de dados: esta saiu");
         return;
     }
     // pacote "para escola sem internet": o instalador do WebView2 da Microsoft ao lado do programa
@@ -638,6 +654,19 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::SEM_REDE;
+
+    // toda função da camada que a barra pede tem de estar na lista do host (na 1.4.2-rc.1 o someTempo ficou de fora e
+    // o tempo da tinta que some dava "a camada não tem someTempo"; só o teste com janela pegou)
+    #[test]
+    fn barra_so_pede_a_camada_o_que_a_lista_deixa() {
+        let barra = include_str!("../web/barra.html");
+        let mut faltam = Vec::new();
+        for pedaco in barra.split("camada('").skip(1) {
+            let nome: String = pedaco.chars().take_while(|c| c.is_ascii_alphanumeric()).collect();
+            if !nome.is_empty() && !super::DA_CAMADA.contains(&nome.as_str()) { faltam.push(nome); }
+        }
+        assert!(faltam.is_empty(), "a barra pede à camada funções fora de DA_CAMADA: {faltam:?}");
+    }
 
     // conexões da rc.4 da 1.4.0: o WebView2 ainda falava com a Microsoft; nenhum nome da internet resolve (como no
     // Giz Livre 1.17.0 e no Tarja Livre), e o proxy que não existe continua para o que vier por endereço

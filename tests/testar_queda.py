@@ -38,7 +38,8 @@ def principal():
             vivo = p.poll() is None and (dados / "agente" / "porta").exists()
             if i:
                 abriu += vivo
-                print(f"  reabertura {i} depois da queda: {'abriu' if vivo else 'NÃO ABRIU'}")
+                print(f"  reabertura {i} depois da queda: {'abriu' if vivo else 'NÃO ABRIU'}"
+                      + ("" if vivo else f" (saiu com o código {p.poll()})"))
             elif not vivo:
                 print("  a primeira abertura falhou: o teste não vale")
                 return 1

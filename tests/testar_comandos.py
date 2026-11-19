@@ -573,6 +573,20 @@ def t_some(a):
     confere(not a.estado()["tinta_some"], "tinta.some desliga")
 
 
+def t_some_tempo(a):
+    # 2 s: o texto some antes de 2,6 s (de fábrica, 3 s); depois volta aos 3 s de fábrica
+    confere(a.estado()["tinta_some_segundos"] == 3, "tinta.tempo: de fábrica, 3 s")
+    confere(a.cmd("tinta.tempo", segundos=4)[0] == 400, "tinta.tempo recusa tempo fora da lista")
+    a.valor("tinta.tempo", segundos=2)
+    a.valor("tinta.some", ligado=True)
+    n = a.estado()["desenhos"]
+    a.valor("texto.escrever", texto="dois", x=300, y=300)
+    time.sleep(2.6)
+    confere(a.estado()["desenhos"] == n, "tinta.tempo 2: o texto some em 2 s")
+    a.valor("tinta.some", ligado=False)
+    confere(a.valor("tinta.tempo", segundos=3)["tinta_some_segundos"] == 3, "tinta.tempo volta a 3 s")
+
+
 def t_congelar(a):
     confere(a.valor("tela.congelar", ligado=True)["congelado"], "tela.congelar liga")
     confere(not a.valor("tela.congelar")["congelado"], "tela.congelar sem parâmetro alterna")
@@ -935,7 +949,7 @@ def main():
                 "selecao.apagar": t_selecao, "selecao.cor": t_selecao,
                 "desenho.desfazer": t_desfazer_refazer, "desenho.refazer": t_desfazer_refazer, "desenho.limpar": t_limpar,
                 "quadro.alternar": t_quadro, "forma.preencher": t_preencher, "seta.estilo": t_seta, "cota.estilo": t_cota, "cor.posicao": t_cores, "cor.trocar": t_cores, "cores.restaurar": t_cores,
-                "cota.escala": t_escala, "objeto.mover": t_mover, "tinta.some": t_some,
+                "cota.escala": t_escala, "objeto.mover": t_mover, "tinta.some": t_some, "tinta.tempo": t_some_tempo,
                 "tela.congelar": t_congelar, "tela.ampliar": t_ampliar, "tela.fixar": t_fixar,
                 "barra.recolher": t_recolher, "captura.salvar": lambda a: t_salvar(a, capturas),
                 "captura.mandar_ao_giz": lambda a: t_giz(a, giz_info), "captura.ler": t_ler,

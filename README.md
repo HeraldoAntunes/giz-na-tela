@@ -13,7 +13,7 @@ digitalizadora. Livre, gratuito e sem internet.</p>
   <a href="https://doi.org/10.5281/zenodo.23690523"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.23690523.svg" alt="DOI"></a>
   <a href="https://github.com/HeraldoAntunes/giz-na-tela/releases"><img src="https://img.shields.io/github/downloads/HeraldoAntunes/giz-na-tela/total?label=downloads" alt="Downloads"></a>
   <br>
-  <a href="#requisitos"><img src="https://img.shields.io/badge/testado%20no-Windows%2011-0078D6" alt="Testado no Windows 11"></a>
+  <a href="#requisitos"><img src="https://img.shields.io/badge/testado%20no-Windows%2010%20e%2011-0078D6" alt="Testado no Windows 10 e 11"></a>
   <img src="https://img.shields.io/badge/internet-n%C3%A3o%20precisa-2b8a3e" alt="Não precisa de internet">
   <a href="#comandos-para-tudo-atalhos-testes-e-agentes-de-ia"><img src="https://img.shields.io/badge/agentes-MCP-6f42c1" alt="Agentes: MCP"></a>
   <br>
@@ -37,15 +37,15 @@ digitalizadora. Livre, gratuito e sem internet.</p>
 
 ## Qual arquivo baixar?
 
-Versão de agora: **1.4.1** ([todas as versões](https://github.com/HeraldoAntunes/giz-na-tela/releases)).
+Versão de agora: **1.4.2** ([todas as versões](https://github.com/HeraldoAntunes/giz-na-tela/releases)).
 
 | Para quê | Baixar |
 |---|---|
-| **Instalar no computador (Windows)** | [**Instalar-GizNaTela-1.4.1.zip**](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.1/Instalar-GizNaTela-1.4.1.zip) |
-| Escola sem internet (leva o WebView2 da Microsoft junto) | [GizNaTela-1.4.1-sem-internet.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.1/GizNaTela-1.4.1-sem-internet.zip) |
-| Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.4.1-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.1/GizNaTela-1.4.1-portatil.zip) |
+| **Instalar no computador (Windows)** | [**Instalar-GizNaTela-1.4.2.zip**](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.2/Instalar-GizNaTela-1.4.2.zip) |
+| Escola sem internet (leva o WebView2 da Microsoft junto) | [GizNaTela-1.4.2-sem-internet.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.2/GizNaTela-1.4.2-sem-internet.zip) |
+| Usar sem instalar (versão portátil, para pendrive) | [GizNaTela-1.4.2-portatil.zip](https://github.com/HeraldoAntunes/giz-na-tela/releases/download/v1.4.2/GizNaTela-1.4.2-portatil.zip) |
 
-Extraia o zip (botão direito, **Extrair tudo**) e dê dois cliques em **Instalar-GizNaTela-1.4.1.exe**. O instalador
+Extraia o zip (botão direito, **Extrair tudo**) e dê dois cliques em **Instalar-GizNaTela-1.4.2.exe**. O instalador
 é o próprio programa: ele pergunta se instala na sua conta ou se só abre, sem instalar. Quem tem a 1.3.x ou anterior
 instala assim, por cima (o "Procurar versão nova" da 1.3.x não acha o instalador dentro do zip); da 1.4.0 em diante,
 a atualização pela ajuda volta a funcionar.
@@ -101,7 +101,8 @@ onde a barra ficou.</td>
 - **Shift** deixa reto o traço da caneta e do marca-texto.
 - **Holofote e lupa.**
 - **Congelar a tela** (um vídeo parado enquanto você explica) e **ampliar** um ponto para escrever em cima.
-- **Tinta que some** sozinha em 3 segundos, para apontar sem sujar a tela.
+- **Tinta que some** sozinha em 3 segundos, para apontar sem sujar a tela (o tempo muda nos ajustes: 2, 3, 5 ou
+  10 segundos).
 - **Projetor no modo estender:** um toque leva a tinta e a barra para o projetor e traz de volta; cada tela guarda a
   sua tinta.
 - **Copiar** a tela com a tinta (Ctrl+C) para colar num documento ou numa prova, **salvar** como imagem
@@ -110,6 +111,8 @@ onde a barra ficou.</td>
 - **Fechar com desenho na tela** pede um segundo toque no X, para não perder a aula sem querer.
 - **Botão lateral da caneta** (experimental): enquanto apertado, vira borracha, marca-texto, reta, mão ou laço.
 - Seis cores, três espessuras e atalhos de teclado para tudo (lista completa na ajuda).
+- **Vídeo por baixo:** no Mouse livre, o teclado vai para o programa de baixo, e o Espaço não é atalho do Giz (pausa e
+  continua o vídeo). A mão (Mover) fica na tecla I.
 
 ## Comandos para tudo: atalhos, testes e agentes de IA
 
@@ -135,7 +138,8 @@ A mesma aba mostra o trecho pronto para a configuração do assistente. Detalhes
   faltar, o programa explica onde baixar; sem internet, o pacote "escola sem internet" traz o instalador oficial da
   Microsoft ao lado e o programa oferece instalá-lo.
 - Mesa digitalizadora: para a pressão funcionar, ligue **"Usar Windows Ink"** no painel de ajustes da mesa. Testado no
-  Windows 11 com mesa digitalizadora de caneta.
+  Windows 11 com mesa digitalizadora de caneta. No Windows 10 (22H2), testado só no computador: instalar, abrir,
+  desenhar, capturar e desinstalar, sem mesa nem projetor.
 
 Com projetor no modo "estender", a tinta fica numa tela por vez: o botão de tela da barra (tecla Y) troca de uma para
 a outra. Escrever nas duas ao mesmo tempo ainda não dá.
@@ -215,11 +219,11 @@ mesmo computador, sem passar pela internet. Os agentes de IA vêm desligados; se
 computador conseguem usar, e com um código de acesso que o Giz na Tela cria e guarda.
 
 A janela do Giz na Tela é desenhada pelo WebView2, um componente da Microsoft que vem no Windows. O WebView2 pode
-abrir sozinho uma conexão com a Microsoft. O programa desliga os serviços de rede dele; nas medições da 1.4.0
-(programa instalado, 5 aberturas de 10 minutos) a conexão apareceu em todas, nos primeiros segundos. Desde a 1.4.1 o
-programa também impede o componente de encontrar sites na internet; nas medições da 1.4.1, nenhuma das 5 aberturas
-teve conexão. Como depende do componente da Microsoft, não há garantia. Nada seu (desenho, imagem, texto) passa por
-essa conexão, e ela pode ser bloqueada no firewall do Windows.
+abrir sozinho uma conexão com a Microsoft. O programa desliga os serviços de rede dele e o impede de encontrar sites
+na internet, mas isso não basta: nas medições da 1.4.1 (5 aberturas de 10 minutos), um Windows de testes não teve
+nenhuma conexão, e o computador de uso do autor teve uma em cada abertura, de meio minuto a 9 minutos depois de abrir
+(na 1.4.0, tinham sido 5 de 5, nos primeiros segundos). Nada seu (desenho, imagem, texto) passa por essa conexão, e
+ela pode ser bloqueada no firewall do Windows.
 
 ## Contribuir
 
@@ -232,6 +236,12 @@ Se usar o Giz na Tela num trabalho, artigo ou material didático, cite a versão
 [CITATION.cff](CITATION.cff); no GitHub, o botão **Cite this repository** gera a referência pronta (APA ou BibTeX).
 Cada versão fica arquivada no Zenodo com DOI. O DOI geral, que leva sempre à versão mais recente, é
 [10.5281/zenodo.23690523](https://doi.org/10.5281/zenodo.23690523).
+
+## Registro
+
+Programa de computador registrado no INPI (Instituto Nacional da Propriedade Industrial) sob o nº
+**BR 51 2026 010708-3**, com o certificado publicado na Revista da Propriedade Industrial nº 2915, de 17/11/2026.
+O registro prova a autoria e a data; o programa continua livre, sob a licença MIT.
 
 ## Como foi feito
 

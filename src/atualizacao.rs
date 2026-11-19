@@ -155,9 +155,13 @@ pub fn baixar_e_conferir(andamento: impl FnMut(u64, u64)) -> Result<(String, Pat
         return Ok((v.numero, arq));
     }
     // o zip conferido é aberto pelo tar do próprio Windows (Windows 10 de 2018 em diante); dentro vem o instalador
-    extrair_zip(&arq, &pasta)?;
+    if let Err(e) = extrair_zip(&arq, &pasta) {
+        let _ = std::fs::remove_dir_all(&pasta);
+        return Err(e);
+    }
     let exe = pasta.join(format!("Instalar-GizNaTela-{}.exe", v.numero));
     if !exe.is_file() {
+        let _ = std::fs::remove_dir_all(&pasta);
         return Err("o zip publicado não traz o instalador; nada foi instalado".into());
     }
     Ok((v.numero, exe))

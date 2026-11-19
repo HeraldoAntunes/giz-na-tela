@@ -22,6 +22,8 @@ const CANETAS = [{ ferramenta: 'caneta', cor: '#e53935', espessura: 'fina' },
 const PENA = { tipo: 'numero', min: 1, max: CANETAS.length, inteiro: true, descricao: `caneta pronta (1 a ${CANETAS.length})` };
 // o que o botão lateral da caneta faz enquanto está apertado (experimental: depende do driver da mesa)
 const BOTAO_DA_CANETA = ['nada', 'borracha', 'marca', 'reta', 'mover', 'laco'];
+// segundos que a tinta que some fica na tela (3 de fábrica; o fim, 0,7 s, é o apagar suave)
+const TEMPOS_SOME = [2, 3, 5, 10];
 const MOVIMENTO = { tipo: 'numero', min: -20000, max: 20000 };
 
 // tipos de parâmetro: a mesma validação vale para o clique, o atalho e o pedido de fora (que não é confiável)
@@ -102,8 +104,13 @@ const COMANDOS = [
       'que está embaixo). Sem parâmetro, passa para o próximo.',
     parametros: { modo: { tipo: 'texto', valores: ['nada', 'translucido', 'cheio'], opcional: true } } },
   { nome: 'tinta.some', nivel: 'agir', volta_a_escrever: true, aviso: () => 'mudou a tinta que some',
-    descricao: 'Liga ou desliga a tinta que some sozinha em 3 segundos (para apontar sem sujar a tela).',
+    descricao: 'Liga ou desliga a tinta que some sozinha (em 3 segundos de fábrica; o tempo fica em tinta.tempo), ' +
+      'para apontar sem sujar a tela.',
     parametros: { ligado: LIGADO('true liga') } },
+  { nome: 'tinta.tempo', nivel: 'agir', aviso: p => `a tinta que some agora dura ${p.segundos} s`,
+    descricao: 'Quanto tempo a tinta que some fica na tela: 2, 3 (de fábrica), 5 ou 10 segundos. Fica guardado nos ' +
+      'ajustes. Vale para os traços feitos depois.',
+    parametros: { segundos: { tipo: 'numero', inteiro: true, min: 2, max: 10, valores: TEMPOS_SOME } } },
   { nome: 'tela.congelar', nivel: 'agir', volta_a_escrever: true, aviso: () => 'congelou ou descongelou a tela',
     descricao: 'Congela a tela (um retrato parado do que está embaixo, para explicar um vídeo ou animação).',
     parametros: { ligado: LIGADO('true congela') } },
@@ -199,7 +206,7 @@ const ATALHOS = {
   c: ['ferramenta.escolher', { ferramenta: 'caneta' }], m: ['ferramenta.escolher', { ferramenta: 'marca' }],
   b: ['ferramenta.escolher', { ferramenta: 'borracha' }], l: ['ferramenta.escolher', { ferramenta: 'reta' }],
   s: ['ferramenta.escolher', { ferramenta: 'seta' }], k: ['ferramenta.escolher', { ferramenta: 'cota' }],
-  j: ['ferramenta.escolher', { ferramenta: 'medir' }], ' ': ['ferramenta.escolher', { ferramenta: 'mover' }], r: ['ferramenta.escolher', { ferramenta: 'retangulo' }],
+  j: ['ferramenta.escolher', { ferramenta: 'medir' }], i: ['ferramenta.escolher', { ferramenta: 'mover' }], r: ['ferramenta.escolher', { ferramenta: 'retangulo' }],
   e: ['ferramenta.escolher', { ferramenta: 'elipse' }], t: ['ferramenta.escolher', { ferramenta: 'texto' }],
   n: ['ferramenta.escolher', { ferramenta: 'numero' }], v: ['ferramenta.escolher', { ferramenta: 'visto' }],
   x: ['ferramenta.escolher', { ferramenta: 'xis' }], h: ['ferramenta.escolher', { ferramenta: 'holofote' }],
@@ -238,6 +245,7 @@ function validarValor(nome, d, v) {
       if (typeof v !== 'number' || !Number.isFinite(v)) falha(`${nome}: precisa ser número`);
       if (d.inteiro && !Number.isInteger(v)) falha(`${nome}: precisa ser inteiro`);
       if (v < d.min || v > d.max) falha(`${nome}: de ${d.min} a ${d.max}`);
+      if (d.valores && !d.valores.includes(v)) falha(`${nome}: use ${d.valores.join(', ')}`);
       return v;
     case 'logico':
       if (typeof v !== 'boolean') falha(`${nome}: true ou false`);
@@ -288,5 +296,5 @@ function descrever(c) {
     parametros: Object.fromEntries(Object.entries(c.parametros || {}).map(([k, d]) => [k, { ...d }])) };
 }
 
-window.GizTela = { CANETAS, BOTAO_DA_CANETA, COTAS, COMANDOS, POR_NOME, ATALHOS, ATALHO_GLOBAL, DE_NOVO, CORES, ESPESSURAS, FERRAMENTAS, NOME_FERRAMENTA, validar, descrever };
+window.GizTela = { CANETAS, BOTAO_DA_CANETA, TEMPOS_SOME, COTAS, COMANDOS, POR_NOME, ATALHOS, ATALHO_GLOBAL, DE_NOVO, CORES, ESPESSURAS, FERRAMENTAS, NOME_FERRAMENTA, validar, descrever };
 })();

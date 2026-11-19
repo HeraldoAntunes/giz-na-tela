@@ -92,6 +92,12 @@ fn atender(app: &AppHandle, mut c: TcpStream, porta: u16) {
         match c.read(&mut pedaco) { Ok(0) | Err(_) => return, Ok(n) => corpo.extend_from_slice(&pedaco[..n]) }
     }
     corpo.truncate(tam);
+    // conferido de novo logo antes de despachar, em todas as rotas (também na de teste, GNT-RC4-T01): o corpo pode
+    // ter levado segundos para chegar e, nesse meio tempo, o professor pode ter desligado ou mudado o nível
+    let agora = estado.epoca_agentes.load(std::sync::atomic::Ordering::SeqCst);
+    if !pedido_ainda_vale(epoca, agora, &estado.config.lock().unwrap().agentes) {
+        return erro(&mut c, 403, "os Agentes de IA foram desligados ou mudaram de nível durante o pedido");
+    }
     let (nome, parametros) = match (metodo.as_str(), rota.as_str()) {
         // só na compilação de teste (cargo build, sem --release): roda um trecho de JavaScript na camada, para os
         // testes de eventos de ponteiro (tests/testar_camada.py) usarem o WebView2 de verdade; o programa publicado
@@ -112,11 +118,6 @@ fn atender(app: &AppHandle, mut c: TcpStream, porta: u16) {
         }
         _ => return erro(&mut c, 404, "rotas: GET /api/comandos e POST /api/comando"),
     };
-    // conferido de novo logo antes de despachar: o corpo pode ter levado segundos para chegar
-    let agora = estado.epoca_agentes.load(std::sync::atomic::Ordering::SeqCst);
-    if !pedido_ainda_vale(epoca, agora, &estado.config.lock().unwrap().agentes) {
-        return erro(&mut c, 403, "os Agentes de IA foram desligados ou mudaram de nível durante o pedido");
-    }
     // a época vai junto: a barra recusa o pedido se o nível mudar enquanto ele espera a vez na fila
     let js = format!("return await executarDeFora({}, {}, {}, {epoca})", json!(nome), parametros, json!(nivel));
     match crate::chamar(app, "barra", &js, Duration::from_secs(60)) {
@@ -148,6 +149,17 @@ mod testes {
         assert!(pedido_ainda_vale(3, 3, "agir"));
         assert!(!pedido_ainda_vale(3, 4, "agir"), "o nível mudou depois do pedido começar");
         assert!(!pedido_ainda_vale(3, 3, "desligado"));
+    }
+    // GNT-RC4-T01: a rota de teste (/api/teste/camada) despachava antes de conferir a época de novo. A conferência fica
+    // antes da escolha da rota, para valer em todas; a rota só existe na compilação de teste, então se confere a ordem
+    #[test]
+    fn epoca_conferida_antes_de_qualquer_rota() {
+        let fonte = include_str!("api.rs");
+        let atender = &fonte[fonte.find("fn atender(").unwrap()..];
+        let confere = atender.find("if !pedido_ainda_vale(epoca, agora").unwrap();
+        let rota_teste = atender.find(concat!("\"/api/", "teste/camada\"")).unwrap();
+        let rota_comando = atender.find(concat!("\"/api/", "comando\")")).unwrap();
+        assert!(confere < rota_teste && confere < rota_comando, "a época tem de ser conferida antes das rotas");
     }
     #[test]
     fn cabecalho_acima_do_limite_e_recusado() {

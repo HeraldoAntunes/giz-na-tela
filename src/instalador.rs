@@ -170,12 +170,39 @@ fn registrar(exe: &Path, desinstalador: &Path, pasta: &Path) -> Result<(), Strin
     res
 }
 
+// O que o próprio programa deixa no Temp e não consegue apagar na hora: a pasta da atualização (o instalador baixado
+// roda de lá), a cópia que desinstala (não apaga a si mesma) e a cópia do instalador da migração do Inno. Sai na
+// abertura seguinte da cópia instalada, uma a uma pelo nome, só o que tem mais de 10 minutos (uma atualização ainda
+// em andamento fica). Nada de outro programa: só estes três nomes.
+const SOBRAS_IDADE: Duration = Duration::from_secs(600);
+fn sobra_nossa(nome: &str, pasta: bool) -> bool {
+    let n = nome.to_lowercase();
+    if pasta { return n.starts_with("giznatela-atualizacao-"); }
+    n.ends_with(".exe") && (n.starts_with("giznatela-desinstalar-") || n.starts_with("instalar-giznatela-"))
+}
+fn limpar_sobras_em(temp: &Path, idade: Duration) -> usize {
+    let Ok(lista) = std::fs::read_dir(temp) else { return 0 };
+    let mut n = 0;
+    for e in lista.flatten() {
+        let Ok(tipo) = e.file_type() else { continue };
+        if tipo.is_symlink() || !sobra_nossa(&e.file_name().to_string_lossy(), tipo.is_dir()) { continue; }
+        let velha = e.metadata().and_then(|m| m.modified()).ok()
+            .and_then(|t| t.elapsed().ok()).is_some_and(|d| d >= idade);
+        if !velha { continue; }
+        let ok = if tipo.is_dir() { std::fs::remove_dir_all(e.path()).is_ok() } else { std::fs::remove_file(e.path()).is_ok() };
+        if ok { n += 1; }
+    }
+    n
+}
+
 // a cada abertura da cópia instalada: a lista de Aplicativos mostra a versão que está de fato aqui
 pub fn conferir_instalacao() {
+    limpar_sobras_em(&std::env::temp_dir(), SOBRAS_IDADE);
     // o .old que sobrou de uma atualização só sai com o programa no lugar (sem ele, o .old é a única cópia)
     if let Some(p) = pasta().filter(|p| p.join(EXE).exists()) {
         let _ = std::fs::remove_file(p.join("GizNaTela.old"));
     }
+    tirar_antigas_orfas();
     let mut chave = 0isize;
     if unsafe { RegOpenKeyExW(HKCU, largo(CHAVE).as_ptr(), 0, 0x0002, &mut chave) } != 0 { return; }   // KEY_SET_VALUE
     let _ = gravar_valores(chave, &[("DisplayVersion", Valor::Texto(crate::VERSAO.into()))]);
@@ -329,6 +356,24 @@ fn separar(cmd: &str) -> (String, Vec<String>) {
     (c.to_string(), Vec::new())
 }
 
+// chave antiga (Inno ou NSIS) cujo desinstalador não existe mais: instalação à mão, pasta apagada ou trocada. Não há
+// como rodá-la, e ela deixava na lista de Aplicativos instalados a versão antiga ao lado da nova (achado da 1.3.1).
+// Só esse caso: com o desinstalador no lugar, quem tira a instalação antiga é ele (migrar)
+fn orfa(desinstalar: &str) -> bool {
+    let (exe, _) = separar(desinstalar);
+    !exe.to_lowercase().ends_with(".exe") || !Path::new(&exe).is_file()
+}
+fn tirar_orfas(chaves: &[&str]) -> usize {
+    let mut n = 0;
+    for c in chaves {
+        if ler_texto(c, "UninstallString").is_some_and(|cmd| orfa(&cmd)) && unsafe { RegDeleteTreeW(HKCU, largo(c).as_ptr()) } == 0 {
+            n += 1;
+        }
+    }
+    n
+}
+fn tirar_antigas_orfas() -> usize { tirar_orfas(&ANTIGAS.map(|(c, _)| c)) }
+
 // tira a instalação do Inno ou do NSIS com o desinstalador dela, em silêncio, e espera a chave sumir (até 30 s);
 // os dois se copiam para a pasta temporária e voltam antes de terminar
 fn migrar() -> Result<(), String> {
@@ -393,6 +438,7 @@ pub fn instalar(silencio: bool) -> Result<Feito, String> {
     let com_mesa = !destino.exists() || mesa.as_ref().is_some_and(|m| m.join(ATALHO).exists());
     // o desinstalador da 1.3.x fecha à força todo GizNaTela.exe da conta (até um portátil com desenho): antes de
     // chamá-lo, todas as cópias abertas fecham pelo caminho normal; sem instalação antiga, só as da pasta instalada
+    tirar_antigas_orfas();
     let antiga = ANTIGAS.iter().any(|(c, _)| ler_texto(c, "UninstallString").is_some());
     let prazo = Duration::from_secs(if silencio { 120 } else { 8 });
     fechar_pedindo(if antiga { None } else { Some(&pasta) }, silencio, prazo)?;
@@ -532,6 +578,48 @@ pub fn pedido() -> Option<i32> {
 #[cfg(test)]
 mod testes {
     use super::*;
+    // sobras no Temp: só os três nomes do programa saem, e só as antigas; o resto do Temp não é tocado
+    #[test]
+    fn sobras_do_programa_no_temp_saem_pelo_nome() {
+        let t = crate::sistema::PastaDeTeste::nova("giz-sobras");
+        std::fs::create_dir_all(t.0.join("GizNaTela-atualizacao-abc123")).unwrap();
+        std::fs::write(t.0.join("GizNaTela-atualizacao-abc123").join("Instalar-GizNaTela-9.9.9.zip"), b"x").unwrap();
+        for f in ["GizNaTela-desinstalar-abc.exe", "Instalar-GizNaTela-1.3.2.exe", "outro.exe", "GizNaTela-desinstalar.txt"] {
+            std::fs::write(t.0.join(f), b"x").unwrap();
+        }
+        std::fs::create_dir_all(t.0.join("giz-formas-outro")).unwrap();
+        assert_eq!(limpar_sobras_em(&t.0, Duration::from_secs(3600)), 0, "recentes ficam (atualização em andamento)");
+        assert_eq!(limpar_sobras_em(&t.0, Duration::ZERO), 3);
+        let mut ficou: Vec<String> = std::fs::read_dir(&t.0).unwrap().flatten()
+            .map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+        ficou.sort();
+        assert_eq!(ficou, ["GizNaTela-desinstalar.txt", "giz-formas-outro", "outro.exe"]);
+    }
+    // a lista do Windows com a versão antiga: a chave do Inno sem desinstalador sai; a que tem desinstalador fica para
+    // o migrar. Num ramo de teste do registro da conta (fora do Uninstall), apagado no fim
+    #[test]
+    fn chave_antiga_sem_desinstalador_sai_da_lista() {
+        let raiz = format!(r"Software\GizNaTela-teste-{}", std::process::id());
+        let (orf, viva, sem) = (format!(r"{raiz}\orfa"), format!(r"{raiz}\viva"), format!(r"{raiz}\sem"));
+        let eu = std::env::current_exe().unwrap().display().to_string();
+        let cria = |sub: &str, cmd: Option<String>| {
+            let mut k = 0isize;
+            assert_eq!(unsafe { RegCreateKeyExW(HKCU, largo(sub).as_ptr(), 0, std::ptr::null(), 0, 0x20006,
+                std::ptr::null(), &mut k, std::ptr::null_mut()) }, 0);
+            if let Some(c) = cmd { gravar_valores(k, &[("UninstallString", Valor::Texto(c))]).unwrap(); }
+            unsafe { RegCloseKey(k) };
+        };
+        cria(&orf, Some(r#""C:\nao-existe-giz\unins000.exe" /x"#.into()));
+        cria(&viva, Some(format!("\"{eu}\" --desinstalar")));
+        cria(&sem, None);
+        let n = tirar_orfas(&[orf.as_str(), viva.as_str(), sem.as_str()]);
+        let (sobrou_orfa, sobrou_viva) = (ler_texto(&orf, "UninstallString"), ler_texto(&viva, "UninstallString"));
+        unsafe { RegDeleteTreeW(HKCU, largo(&raiz).as_ptr()) };
+        assert_eq!(n, 1);
+        assert!(sobrou_orfa.is_none(), "a chave órfã tinha de sair");
+        assert!(sobrou_viva.is_some(), "a chave com desinstalador fica para o migrar");
+        assert!(orfa("sem exe nenhum") && !orfa(&format!("\"{eu}\"")));
+    }
     #[test]
     fn separa_o_desinstalador() {
         assert_eq!(separar(r#""C:\a b\unins000.exe""#), (r"C:\a b\unins000.exe".to_string(), vec![]));

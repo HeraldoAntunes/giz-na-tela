@@ -49,13 +49,14 @@ let sel = new Set();
 function guardar() { S.passado.push(S.tracos); if (S.passado.length > 300) S.passado.shift(); S.futuro = []; }
 function acrescentar(t) {
   guardar();
-  if (S.some && !t.borracha) t.ate = performance.now() + SOME_MS;
+  if (S.some && !t.borracha) t.ate = performance.now() + someMs;
   S.tracos = [...S.tracos, t];
   if (t.ate) animarSumico();
   avisarBarra();
 }
-// tinta que some: fica inteira por 2,3 s e se apaga em 0,7 s
-const SOME_MS = 3000, APAGAR_MS = 700;
+// tinta que some: fica inteira e se apaga nos últimos 0,7 s; o tempo todo vem dos ajustes (3 s de fábrica)
+let someMs = 3000;
+const APAGAR_MS = 700;
 const alfa = t => (t.ate ? Math.min(1, Math.max(0, (t.ate - performance.now()) / APAGAR_MS)) : 1);
 const vivos = lista => lista.filter(t => !t.ate || t.ate > performance.now());
 let sumindo = false;
@@ -757,6 +758,7 @@ window.camada = {
     return estado();
   },
   some(sim) { S.some = !!sim; return estado(); },
+  someTempo(s) { if ([2, 3, 5, 10].includes(s)) someMs = s * 1000; return estado(); },
   seta(v) { S.seta = v?.ponta === 'cheia' ? 'cheia' : 'aberta'; S.setaDupla = !!v?.dupla; return estado(); },
   cota(e) { S.cota = e === 'tracos' ? 'tracos' : 'setas'; return estado(); },
   // objeto.mover (agente ou teste): o mesmo que a mão faz, num passo só
@@ -811,7 +813,7 @@ window.camada = {
     });
     if (novos.length) {
       guardar();
-      const ate = S.some ? performance.now() + SOME_MS : 0;
+      const ate = S.some ? performance.now() + someMs : 0;
       S.tracos = [...S.tracos, ...novos.map(t => (ate ? { ...t, ate } : t))];
       if (ate) animarSumico();
       redesenhar(); atualizarCursor();

@@ -96,7 +96,7 @@
   <p><b>Medir</b> (<kbd>J</kbd>, o botão da régua): arraste e a medida aparece sozinha, em pixels da tela. Para medir em
     cm ou mm, faça antes uma <b>Cota</b> sobre algo de tamanho conhecido (uma régua no slide, a escala de um mapa) e
     digite a medida com a unidade, por exemplo <kbd>10 cm</kbd>: ela vira a régua, e o Medir passa a dar cm.</p>
-  <p><b>Mover</b> (<kbd>Espaço</kbd>, a mão): toque num traço, forma, texto ou carimbo e arraste. <kbd>Ctrl</kbd>+<kbd>Z</kbd>
+  <p><b>Mover</b> (<kbd>I</kbd>, a mão): toque num traço, forma, texto ou carimbo e arraste. <kbd>Ctrl</kbd>+<kbd>Z</kbd>
     devolve ao lugar.</p>
   <p><b>Laço</b> (<kbd>W</kbd>, o botão ao lado da mão): contorne vários traços, formas e textos de uma vez. O
     grupo fica marcado com uma moldura azul; arraste-o para outro lugar, toque numa bolinha de cor para pintá-lo ou
@@ -116,7 +116,10 @@
   <p><b>Quadro</b> cobre a tela com fundo branco ou negro. <b>Congelar</b> deixa a tela parada (um vídeo, uma animação)
     enquanto você explica. <b>Ampliar</b> aumenta um ponto da tela para escrever em cima. <b>Preenchimento</b> muda o
     retângulo e a elipse (só contorno, translúcido ou cheio, que tapa a resposta). <b>Tinta que some</b> apaga sozinha
-    em 3 segundos, para apontar sem sujar a tela.</p>
+    em 3 segundos, para apontar sem sujar a tela. O tempo muda aqui:</p>
+  <p><label>A tinta que some fica na tela por: <select id="tempoSome">
+    <option value="2">2 segundos</option><option value="3">3 segundos (de fábrica)</option>
+    <option value="5">5 segundos</option><option value="10">10 segundos</option></select></label></p>
   <h2>Projetor e outras telas</h2>
   <p>Com o projetor ligado no modo <b>estender</b>, aparece na barra o botão de <b>tela</b> (duas telinhas; tecla
     <kbd>Y</kbd>). Um toque leva a tinta e a barra para a outra tela; outro toque traz de volta. Cada tela guarda a sua
@@ -187,6 +190,7 @@
     <dt>Autor</dt><dd>© 2026 Heraldo Antunes</dd>
     <dt>Licença</dt><dd>Software livre, licença MIT: uso, cópia, modificação e distribuição gratuitos, mantendo o aviso de
       licença.</dd>
+    <dt>Registro</dt><dd>Programa de computador registrado no INPI sob o nº BR 51 2026 010708-3.</dd>
     <dt>Código e versões novas</dt><dd>github.com/HeraldoAntunes/giz-na-tela. O programa só consulta a internet quando
       você clica em <b>Procurar versão nova</b>, e nada se instala sem você mandar.
       <p><button class="btn" id="procurar">Procurar versão nova</button> <span id="versaoMsg" aria-live="polite"></span></p>
@@ -202,10 +206,11 @@
       "Mandar ao Giz Livre" entrega a imagem ao Giz Livre aberto no mesmo computador, sem passar pela internet. Os
       agentes de IA vêm desligados; se você ligar, só programas do próprio computador conseguem usar, e com um código
       de acesso que o Giz na Tela cria e guarda. A janela é desenhada pelo WebView2, um componente da Microsoft que vem
-      no Windows e pode abrir sozinho uma conexão com a Microsoft. Na versão 1.4.0, as medições acharam uma conexão
-      dessas em 5 de 5 aberturas de 10 minutos. Desde a 1.4.1, o programa desliga os serviços de rede do componente e
-      também o impede de achar os endereços da internet; como depende do componente, não há garantia. Nada seu passa
-      por essa conexão, e o firewall do Windows pode bloqueá-la.</dd>
+      no Windows e pode abrir sozinho uma conexão com a Microsoft. O programa desliga os serviços de rede do componente
+      e o impede de achar os endereços da internet, mas isso não basta: nas medições da 1.4.1 (5 aberturas de 10
+      minutos), um Windows de testes não teve nenhuma conexão, e o computador de uso do autor teve uma em cada
+      abertura, de meio minuto a 9 minutos depois de abrir. Nada seu passa por essa conexão, e o firewall do Windows
+      pode bloqueá-la.</dd>
     <dt>Como foi feito</dt><dd>Com apoio de assistentes de programação de inteligência artificial, usados como
       ferramenta: a concepção, as decisões, a revisão e os testes são do autor. O código é todo próprio; ideias de
       recursos vieram do uso de outros anotadores de tela em sala de aula.</dd>
@@ -234,7 +239,7 @@ document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // a tabela de atalhos sai do registro de comandos: a ajuda nunca fica diferente do que as teclas fazem
 const { ATALHOS, POR_NOME, NOME_FERRAMENTA, CORES } = window.GizTela;
-const nomeTecla = k => k === ' ' ? '<kbd>Espaço</kbd>' : k === '+' ? '<kbd>+</kbd>' : k.split('+').map(p => `<kbd>${esc({ escape: 'Esc', ctrl: 'Ctrl', alt: 'Alt', delete: 'Delete' }[p] || p.toUpperCase())}</kbd>`).join('+');
+const nomeTecla = k => k === '+' ? '<kbd>+</kbd>' : k.split('+').map(p => `<kbd>${esc({ escape: 'Esc', ctrl: 'Ctrl', alt: 'Alt', delete: 'Delete' }[p] || p.toUpperCase())}</kbd>`).join('+');
 function oQueFaz(nome, a) {
   if (nome === 'ferramenta.escolher') return NOME_FERRAMENTA[a.ferramenta];
   if (nome === 'cor.posicao') return `Cor ${a.posicao} da barra` + (a.posicao === 1 ? ' (de fábrica, o verde)' : '');
@@ -259,6 +264,7 @@ function mostrar(i) {
   document.querySelectorAll('[data-info]').forEach(e => { e.textContent = i[e.dataset.info] || e.textContent; });
   document.querySelectorAll('input[name=nivel]').forEach(r => { r.checked = r.value === i.agentes; });
   $('botaoCaneta').value = i.preferencias?.botaoCaneta || 'nada';
+  $('tempoSome').value = String([2, 3, 5, 10].includes(i.preferencias?.someSegundos) ? i.preferencias.someSegundos : 3);
   $('mcpConfig').textContent = JSON.stringify({ mcpServers: { 'giz-na-tela': { command: i.exe, args: ['--mcp'] } } }, null, 2);
 }
 if (ponte) ponte.info().then(mostrar);
@@ -269,6 +275,7 @@ document.querySelectorAll('input[name=nivel]').forEach(r => r.onchange = async (
   } catch (e) { $('agMsg').textContent = 'Não deu para mudar: ' + e; }
 });
 $('botaoCaneta').onchange = () => ponte?.comandoNaBarra('caneta.botao', { acao: $('botaoCaneta').value });
+$('tempoSome').onchange = () => ponte?.comandoNaBarra('tinta.tempo', { segundos: Number($('tempoSome').value) });
 $('coresDeFabrica').onclick = () => { ponte?.comandoNaBarra('cores.restaurar'); $('coresDeFabrica').textContent = 'Cores e canetas de fábrica de volta'; };
 // versão nova: procurar só quando o professor clica; instalar só depois de ele confirmar (segundo toque)
 let versaoInfo = null, confirmarAte = 0;
